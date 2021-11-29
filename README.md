@@ -3,7 +3,7 @@
 ## What is this project designed for?
 _FastFinder_ is a lightweight tool made for threat hunting, live forensics and triage on Windows Platform. It is 
 focused on enpoint enumeration and suspicious file finding based on various criterias:
-* file path / name;
+* file path / name
 * simple string content match
 * complex content condition(s) based on YARA
 
