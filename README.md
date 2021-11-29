@@ -41,7 +41,7 @@ output:
     filesCopyPath: '' # empty value will copy matched files in the fastfinder.exe folder
 ``` 
 ### Note for input path:
-* '?' for simple char and '\*' for multiple chars wildcards are available for simple string
+* '?' for simple char and '\\*' for multiple chars wildcards are available for simple string
 * environment variables are also available
 * regular expression are allowed , they should be enclosed by /<regex>/
 * input path are always case INSENSITIVE
