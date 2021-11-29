@@ -1,0 +1,12 @@
+input:
+    path: []
+    content:
+        grep: []
+        yara: []
+options:
+    findInHardDrives: true
+    findInRemovableDrives: true
+    findInNetworkDrives: true
+output:
+    base64Files: true
+    filesCopyPath: ''

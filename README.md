@@ -1,4 +1,3 @@
-[![Project Status](https://img.shields.io/badge/status-BETA-yellow?style=flat-square)]()
 # _FastFinder_ - Incident Response - Fast suspicious file finder
 
 ## What is this project designed for?
@@ -29,7 +28,7 @@ Depending on where you are looking for files, _FastFinder_ could be used with ad
 a configuration file example is available [here](configuration.yaml.example) in this repository
 ``` 
 input:
-    path: [] # match file path AND / OR file name based on simple string ('?' and '*' wildcards are available for simple string) OR regular expression (regex have to be enclosed by "/<regex>/")
+    path: [] # match file path AND / OR file name based on simple string 
     content:
         grep: [] # match literal string value inside file contente
         yara: [] # use yara rule and specify rules path(s) for more complex pattern search (wildcards / regex / conditions) 
@@ -41,6 +40,13 @@ output:
     base64Files: true # base64 matched content before copy
     filesCopyPath: '' # empty value will copy matched files in the fastfinder.exe folder
 ``` 
+### Note for input path:
+* '?' for simple char and '\*' for multiple chars wildcards are available for simple string
+* environment variables are also available
+* regular expression are allowed , they should be enclosed by /<regex>/
+* input path are always case INSENSITIVE
+* input content grep strings are always case SENSITIVE
+* backslashes haven't to be escaped on simple string pattern (see example) 
 
 ## About this project and future versions
 I initially created this project to automate the creation of fastfind on a wide computer network. 

@@ -1,0 +1,19 @@
+input:
+    path:
+      - '%APPDATA%\\*.exe'
+      - '%TEMP%\\*.exe'
+      - 'Windows\SysWOW64\c?d.exe'
+      - 'Windows\System32\notepad\*'
+      - '/temp\\{[a-f0-9]{8}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{12}\}\\\w+\.exe$/'
+    content:
+        grep:
+          - 'This program cannot be run in DOS mode'
+        yara:
+          - './example.yar'
+options:
+    findInHardDrives: true
+    findInRemovableDrives: false
+    findInNetworkDrives: false
+output:
+    base64Files: true
+    filesCopyPath: ''
