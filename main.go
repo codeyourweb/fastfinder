@@ -70,7 +70,8 @@ func main() {
 	for _, drive := range drives {
 		if (drive.Type == DRIVE_REMOVABLE && config.Options.FindInRemovableDrives) ||
 			(drive.Type == DRIVE_FIXED && config.Options.FindInHardDrives) ||
-			(drive.Type == DRIVE_REMOTE && config.Options.FindInNetworkDrives) {
+			(drive.Type == DRIVE_REMOTE && config.Options.FindInNetworkDrives) ||
+			(drive.Type == DRIVE_CDROM && config.Options.FindInCDRomDrives) {
 			basePaths = append(basePaths, drive.Name+":\\")
 		}
 	}

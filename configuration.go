@@ -31,6 +31,7 @@ type Options struct {
 	FindInHardDrives               bool `yaml:"findInHardDrives"`
 	FindInRemovableDrives          bool `yaml:"findInRemovableDrives"`
 	FindInNetworkDrives            bool `yaml:"findInNetworkDrives"`
+	FindInCDRomDrives              bool `yaml:"findInCDRomDrives"`
 }
 
 type Output struct {

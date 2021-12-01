@@ -20,6 +20,7 @@ options:
     findInHardDrives: true
     findInRemovableDrives: false
     findInNetworkDrives: false
+    findInCDRomDrives: false
 output:
     base64Files: true
     filesCopyPath: ''
