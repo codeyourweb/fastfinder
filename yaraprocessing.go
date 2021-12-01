@@ -125,6 +125,12 @@ func FileAnalyzeYaraMatch(path string, rules *yara.Rules) bool {
 			defer debug.FreeOSMemory()
 		}
 
+		// cancel analysis if file size is greater than 2Gb
+		if len(content) > 1024*1024*2048 {
+			logMessage(LOG_ERROR, "File size is greater than 2Gb, skipping", path)
+			return false
+		}
+
 		// archive or other file format scan
 		if contains([]string{"application/x-tar", "application/x-7z-compressed", "application/zip", "application/vnd.rar"}, filetype.MIME.Value) {
 			result = PerformArchiveYaraScan(path, rules)

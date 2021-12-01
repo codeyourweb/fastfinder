@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 type Configuration struct {
@@ -21,14 +21,16 @@ type Input struct {
 }
 
 type Content struct {
-	Grep []string `yaml:"grep"`
-	Yara []string `yaml:"yara"`
+	Grep     []string `yaml:"grep"`
+	Yara     []string `yaml:"yara"`
+	Checksum []string `yaml:"checksum"`
 }
 
 type Options struct {
-	FindInHardDrives      bool `yaml:"findInHardDrives"`
-	FindInRemovableDrives bool `yaml:"findInRemovableDrives"`
-	FindInNetworkDrives   bool `yaml:"findInNetworkDrives"`
+	ContentMatchDependsOnPathMatch bool `yaml:"contentMatchDependsOnPathMatch"`
+	FindInHardDrives               bool `yaml:"findInHardDrives"`
+	FindInRemovableDrives          bool `yaml:"findInRemovableDrives"`
+	FindInNetworkDrives            bool `yaml:"findInNetworkDrives"`
 }
 
 type Output struct {
@@ -61,8 +63,12 @@ func (c *Configuration) getConfiguration(configFile string) *Configuration {
 		if c.Input.Path[i][0] != '/' || c.Input.Path[i][len(c.Input.Path[i])-1] != '/' {
 			c.Input.Path[i] = regexp.QuoteMeta(strings.ToLower(c.Input.Path[i]))
 			// use regular expression ".+" for "*" search pattern
-			if strings.Contains(strings.ToLower(c.Input.Path[i]), "\\\\\\*") {
-				c.Input.Path[i] = strings.Replace(c.Input.Path[i], "\\\\\\*", ".+", -1)
+			if strings.Contains(strings.ToLower(c.Input.Path[i]), "\\*") {
+				c.Input.Path[i] = strings.Replace(c.Input.Path[i], "\\*", "[^\\\\]+", -1)
+			}
+
+			if strings.Contains(strings.ToLower(c.Input.Path[i]), "\\\\[^\\\\]+") {
+				c.Input.Path[i] = strings.Replace(c.Input.Path[i], "\\\\[^\\\\]+", "[^\\\\]+", -1)
 			}
 
 			if strings.Contains(strings.ToLower(c.Input.Path[i]), "\\?") {
@@ -72,6 +78,11 @@ func (c *Configuration) getConfiguration(configFile string) *Configuration {
 			c.Input.Path[i] = strings.Trim(c.Input.Path[i], "/")
 		}
 
+	}
+
+	// normalize checksums
+	for i := 0; i < len(c.Input.Content.Checksum); i++ {
+		c.Input.Content.Checksum[i] = strings.ToLower(c.Input.Content.Checksum[i])
 	}
 
 	return c

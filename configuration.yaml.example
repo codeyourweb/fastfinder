@@ -1,16 +1,22 @@
+# TODO check REGEX / YARA / checksum
 input:
     path:
       - '%APPDATA%\\*.exe'
-      - '%TEMP%\\*.exe'
-      - 'Windows\SysWOW64\c?d.exe'
+      - 'TEMP\\*.exe'
+      - 'Windows\SysWOW64\cm*.exe'
       - 'Windows\System32\notepad\*'
-      - '/temp\\{[a-f0-9]{8}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{12}\}\\\w+\.exe$/'
+      - '/temp\\\{[a-f0-9]{8}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{12}\}\\\w+\.exe$/'
     content:
         grep:
-          - 'This program cannot be run in DOS mode'
+          - 'fastfinder.exe'
         yara:
           - './example.yar'
+        checksum:
+         - 'c4884dadc3680439e30bf48ae0ca7048'
+         - '7A320D69E436911A9EAF676D8C2B6A22580BF79F'
+         - 'A4AF9EF6E345B3B4EA50DDE672A986C14F9A195E407EBAC36B1652AACC10E3EE'
 options:
+    contentMatchDependsOnPathMatch: false
     findInHardDrives: true
     findInRemovableDrives: false
     findInNetworkDrives: false

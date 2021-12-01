@@ -68,10 +68,12 @@ func getEnvironmentVariables() (environmentVariables []Env) {
 	return environmentVariables
 }
 
-func listFilesRecursively(path string) (files []string) {
+func listFilesRecursively(path string) *[]string {
+	var files []string
+
 	err := filepath.Walk(path, func(path string, f os.FileInfo, err error) error {
 		if err != nil {
-			log.Println(err)
+			logMessage(LOG_ERROR, "[ERROR]", err)
 			return filepath.SkipDir
 		}
 
@@ -82,10 +84,10 @@ func listFilesRecursively(path string) (files []string) {
 	})
 
 	if err != nil {
-		log.Println(err)
+		logMessage(LOG_ERROR, "[ERROR]", err)
 	}
 
-	return files
+	return &files
 }
 
 func enumLogicalDrives() (drivesInfo []DriveInfo) {

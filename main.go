@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/akamensky/argparse"
+	"github.com/dlclark/regexp2"
 	"github.com/hillu/go-yara/v4"
 )
 
@@ -86,39 +87,81 @@ func main() {
 		logMessage(LOG_INFO, p)
 	}
 
-	// look for file matchs
+	// start main routine
 	logMessage(LOG_INFO, "[INIT]", "Enumerating files")
 	for _, basePath := range basePaths {
 		logMessage(LOG_INFO, "[INFO]", "Looking for files in", basePath)
-		var matchContent []string
+		var matchContent *[]string
+		var matchPattern *[]string
+
 		// files listing
 		files := listFilesRecursively(basePath)
 
 		// match file path
-		var matchPattern []string
 		if len(config.Input.Path) > 0 {
-			matchPattern = pathsFinder(files, config.Input.Path)
+			logMessage(LOG_INFO, "[INFO]", "Checking for paths matchs in", basePath)
+			var pathRegexPatterns []*regexp2.Regexp
+			for _, pattern := range config.Input.Path {
+				re := regexp2.MustCompile(pattern, regexp2.IgnoreCase)
+				pathRegexPatterns = append(pathRegexPatterns, re)
+			}
+			matchPattern = pathsFinder(files, pathRegexPatterns)
+			if !config.Options.ContentMatchDependsOnPathMatch {
+				for _, file := range *matchPattern {
+					logMessage(LOG_INFO, "[ALERT]", "File match on", file)
+				}
+			}
+
 		} else {
 			matchPattern = files
 		}
 
 		// match content - contains
-		if len(config.Input.Content.Grep) > 0 {
-			matchContent = findInFiles(matchPattern, config.Input.Content.Grep)
+		if len(config.Input.Content.Grep) > 0 || len(config.Input.Content.Checksum) > 0 {
+			logMessage(LOG_INFO, "[INFO]", "Checking for content and checksum matchs in", basePath)
+			if config.Options.ContentMatchDependsOnPathMatch {
+				matchContent = findInFiles(matchPattern, config.Input.Content.Grep, config.Input.Content.Checksum)
+			} else {
+				matchContent = findInFiles(files, config.Input.Content.Grep, config.Input.Content.Checksum)
+			}
 		}
 
 		// match content - yara
 		if len(config.Input.Content.Yara) > 0 {
-			for _, file := range matchPattern {
-				if FileAnalyzeYaraMatch(file, rules) && !contains(matchContent, file) {
-					matchContent = append(matchContent, file)
+			logMessage(LOG_INFO, "[INFO]", "Checking for yara matchs in", basePath)
+			if config.Options.ContentMatchDependsOnPathMatch {
+				for _, file := range *matchPattern {
+					if FileAnalyzeYaraMatch(file, rules) && !contains(*matchContent, file) {
+						logMessage(LOG_INFO, "[ALERT]", "File match on", file)
+						*matchContent = append(*matchContent, file)
+					}
+				}
+			} else {
+				for _, file := range *files {
+					if FileAnalyzeYaraMatch(file, rules) && !contains(*matchContent, file) {
+						logMessage(LOG_INFO, "[ALERT]", "File match on", file)
+						*matchContent = append(*matchContent, file)
+					}
 				}
 			}
 		}
 
-		// output matched files and copy
-		for _, f := range matchContent {
-			logMessage(LOG_INFO, "[INFO]", "File match on", f)
+		// also handle result if only match path pattern is set
+		if len(config.Input.Content.Grep) == 0 && len(config.Input.Content.Checksum) == 0 && len(config.Input.Content.Yara) == 0 {
+			matchContent = matchPattern
+		}
+
+		// handle false condition on ContentMatchDependsOnPathMatch options
+		if !config.Options.ContentMatchDependsOnPathMatch {
+			for _, p := range *matchPattern {
+				if !contains(*matchContent, p) {
+					*matchContent = append(*matchContent, p)
+				}
+			}
+		}
+
+		// copy matching files
+		for _, f := range *matchContent {
 			FileCopy(f, config.Output.FilesCopyPath, config.Output.Base64Files)
 		}
 	}

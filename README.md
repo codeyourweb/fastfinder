@@ -30,9 +30,11 @@ a configuration file example is available [here](configuration.yaml.example) in 
 input:
     path: [] # match file path AND / OR file name based on simple string 
     content:
-        grep: [] # match literal string value inside file contente
+        grep: [] # match literal string value inside file content
         yara: [] # use yara rule and specify rules path(s) for more complex pattern search (wildcards / regex / conditions) 
+        checksum: [] # parse for md5/sha1/sha256 in file content 
 options:
+    contentMatchDependsOnPathMatch: true # only match on file content rules if it matchs at least one path condition
     findInHardDrives: true	# enumerate hard drive content
     findInRemovableDrives: true # enumerate removable drive content 
     findInNetworkDrives: true # enumerate network drive content
