@@ -34,7 +34,7 @@ input:
         yara: [] # use yara rule and specify rules path(s) for more complex pattern search (wildcards / regex / conditions) 
         checksum: [] # parse for md5/sha1/sha256 in file content 
 options:
-    contentMatchDependsOnPathMatch: true # only match on file content rules if it matchs at least one path condition
+    contentMatchDependsOnPathMatch: true # if true, paths are a pre-filter for content searchs. If false, paths and content both generate matchs
     findInHardDrives: true	# enumerate hard drive content
     findInRemovableDrives: true # enumerate removable drive content 
     findInNetworkDrives: true # enumerate network drive content
