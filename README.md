@@ -9,7 +9,7 @@ focused on enpoint enumeration and suspicious file finding based on various crit
 
 ### Installation 
 Compiled release of this software are available. If you want to compile 
-from sources, it could be a little bit tricky cause it's stronly depends of 
+from sources, it could be a little bit tricky because it strongly depends of 
 _go-yara_ and CGO compilation. Anyway, you'll find a detailed documentation [here](README.windows-compilation.md)
 
 ### Usage 
