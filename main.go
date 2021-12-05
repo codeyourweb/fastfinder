@@ -25,7 +25,11 @@ func main() {
 
 	// parse configuration file
 	parser := argparse.NewParser("fastfinder", "Incident Response - Fast suspicious file finder")
-	configPath := parser.String("c", "configuration", &argparse.Options{Required: true, Help: "fastfind configuration file"})
+	configPath := parser.String("c", "configuration", &argparse.Options{Required: true, Default: "configuration.yaml", Help: "Fastfind configuration file"})
+	sfxPath := parser.String("b", "build", &argparse.Options{Required: false, Help: "Output a standalone package with configuration and rules in a single binary"})
+	outLogPath := parser.String("o", "output", &argparse.Options{Required: false, Help: "Save fastfinder logs in the specified file"})
+	hideWindow := parser.Flag("n", "nowindow", &argparse.Options{Required: false, Help: "Hide fastfinder window"})
+
 	err = parser.Parse(os.Args)
 	if err != nil {
 		log.Fatal(parser.Usage(err))
@@ -37,9 +41,28 @@ func main() {
 		config.Output.FilesCopyPath = "./"
 	}
 
+	// window hidden
+	if *hideWindow {
+		HideConsoleWindow()
+	}
+
+	// init file logging
+	if len(*outLogPath) > 0 {
+		StdoutToLogFile(*outLogPath)
+		StderrToLogFile(*outLogPath)
+	}
+
+	// check for input configuration
 	if len(config.Input.Path) == 0 && len(config.Input.Content.Grep) == 0 && len(config.Input.Content.Yara) == 0 {
 		logMessage(LOG_ERROR, "[ERROR]", "Input parameters empty - cannot find any item")
 		os.Exit(1)
+	}
+
+	// sfx building option
+	if len(*sfxPath) > 0 {
+		BuildSFX(config, *sfxPath, *outLogPath, *hideWindow)
+		logMessage(LOG_INFO, "[INFO]", "package generated successfully at", *sfxPath)
+		os.Exit(0)
 	}
 
 	// if yara rules mentionned - compile them
@@ -80,16 +103,16 @@ func main() {
 		logMessage(LOG_ERROR, "[ERROR]", "No drive corresponding to your configuration drive type")
 		os.Exit(1)
 	} else {
-		logMessage(LOG_INFO, "[INFO]", "Looking for the following drives", basePaths)
+		logMessage(LOG_INFO, "[INIT]", "Looking for the following drives", basePaths)
 	}
 
-	logMessage(LOG_INFO, "[INFO]", "Looking for the following paths patterns:")
+	logMessage(LOG_INFO, "[INIT]", "Looking for the following paths patterns:")
 	for _, p := range config.Input.Path {
-		logMessage(LOG_INFO, p)
+		logMessage(LOG_INFO, "  |", p)
 	}
 
 	// start main routine
-	logMessage(LOG_INFO, "[INIT]", "Enumerating files")
+	logMessage(LOG_INFO, "[INFO]", "Enumerating files")
 	for _, basePath := range basePaths {
 		logMessage(LOG_INFO, "[INFO]", "Looking for files in", basePath)
 		var matchContent *[]string
@@ -162,9 +185,9 @@ func main() {
 		}
 
 		// copy matching files
+		logMessage(LOG_INFO, "[INFO]", "Copy all matching files")
 		for _, f := range *matchContent {
 			FileCopy(f, config.Output.FilesCopyPath, config.Output.Base64Files)
 		}
 	}
-
 }

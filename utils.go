@@ -35,10 +35,22 @@ const (
 
 var (
 	modKernel32          = windows.NewLazySystemDLL("kernel32.dll")
+	modUser32            = windows.NewLazySystemDLL("user32.dll")
 	procCreateMutex      = modKernel32.NewProc("CreateMutexW")
 	procGetLogicalDrives = modKernel32.NewProc("GetLogicalDrives")
 	procGetDriveTypeW    = modKernel32.NewProc("GetDriveTypeW")
+	procGetConsoleWindow = modKernel32.NewProc("GetConsoleWindow")
+	procShowWindow       = modUser32.NewProc("ShowWindow")
 )
+
+func HideConsoleWindow() {
+	hwnd, _, _ := procGetConsoleWindow.Call()
+	if hwnd == 0 {
+		return
+	}
+
+	procShowWindow.Call(hwnd, 0)
+}
 
 func CreateMutex(name string) (uintptr, error) {
 	mutexNamePtr, err := syscall.UTF16PtrFromString(name)

@@ -9,17 +9,23 @@ focused on enpoint enumeration and suspicious file finding based on various crit
 
 ### Installation 
 Compiled release of this software are available. If you want to compile 
-from sources, it could be a little bit tricky cause it's stronly depends of 
+from sources, it could be a little bit tricky because it strongly depends of 
 _go-yara_ and CGO compilation. Anyway, you'll find a detailed documentation [here](README.windows-compilation.md)
 
 ### Usage 
 ```
-fastfinder [-h|--help] -c|--string "<value>"
+fastfinder [-h|--help] -c|--configuration "<value>" [-b|--build
+                  "<value>"] [-o|--output "<value>"] [-n|--nowindow]
+
+                  Incident Response - Fast suspicious file finder
 
 Arguments:
 
-  -h  --help    Print help information
-  -c  --configuration  fastfind configuration file
+  -h  --help           Print help information
+  -c  --configuration  Fastfind configuration file
+  -b  --build          Output a standalone package with configuration and rules in a single binary
+  -o  --output         Save fastfinder logs in the specified file
+  -n  --nowindow       Hide fastfinder window
 ``` 
 
 Depending on where you are looking for files, _FastFinder_ could be used with admin OR simple user rights. 
