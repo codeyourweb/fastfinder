@@ -43,7 +43,7 @@ func StdoutToLogFile(outLogPath string) {
 		scanner := bufio.NewScanner(rd)
 		for scanner.Scan() {
 			stdoutLine := scanner.Text()
-			multiWriter.Write([]byte(stdoutLine + "\r\n"))
+			multiWriter.Write([]byte(stdoutLine + LineBreak))
 		}
 	}()
 }
@@ -68,7 +68,7 @@ func StderrToLogFile(outLogPath string) {
 		scanner := bufio.NewScanner(rd)
 		for scanner.Scan() {
 			stdoutLine := scanner.Text()
-			multiWriter.Write([]byte(stdoutLine + "\r\n"))
+			multiWriter.Write([]byte(stdoutLine + LineBreak))
 		}
 	}()
 }

@@ -3,11 +3,19 @@
 package main
 
 import (
+	"encoding/base64"
+	"io"
+	"log"
+	"os"
+	"path/filepath"
+	"strings"
 	"syscall"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
 )
+
+const LineBreak = "\r\n"
 
 var (
 	modKernel32          = windows.NewLazySystemDLL("kernel32.dll")
@@ -56,7 +64,7 @@ func EnumLogicalDrives() (drivesInfo []DriveInfo) {
 
 	for _, drive := range drives {
 		var driveInfo DriveInfo
-		driveInfo.Name = drive
+		driveInfo.Name = drive + ":\\"
 		drivePtr, err := syscall.UTF16PtrFromString(drive + ":")
 		if err != nil {
 			return drivesInfo

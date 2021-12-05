@@ -19,7 +19,7 @@ func main() {
 	var err error
 
 	if _, err = CreateMutex("fastfinder"); err != nil {
-		LogMessage(LOG_ERROR, "[ERROR]", "Only one instance or fastfinder can be launched")
+		LogMessage(LOG_ERROR, "[ERROR]", "Only one instance or fastfinder can be launched:", err.Error())
 		os.Exit(1)
 	}
 
@@ -95,7 +95,7 @@ func main() {
 			(drive.Type == DRIVE_FIXED && config.Options.FindInHardDrives) ||
 			(drive.Type == DRIVE_REMOTE && config.Options.FindInNetworkDrives) ||
 			(drive.Type == DRIVE_CDROM && config.Options.FindInCDRomDrives) {
-			basePaths = append(basePaths, drive.Name+":\\")
+			basePaths = append(basePaths, drive.Name)
 		}
 	}
 
@@ -106,9 +106,11 @@ func main() {
 		LogMessage(LOG_INFO, "[INIT]", "Looking for the following drives", basePaths)
 	}
 
-	LogMessage(LOG_INFO, "[INIT]", "Looking for the following paths patterns:")
-	for _, p := range config.Input.Path {
-		LogMessage(LOG_INFO, "  |", p)
+	if len(config.Input.Path) > 0 {
+		LogMessage(LOG_INFO, "[INIT]", "Looking for the following paths patterns:")
+		for _, p := range config.Input.Path {
+			LogMessage(LOG_INFO, "  |", p)
+		}
 	}
 
 	// start main routine

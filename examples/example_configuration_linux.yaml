@@ -1,0 +1,19 @@
+input:
+    path: []
+    content:
+        grep: []
+        yara:
+          - './examples/example_rule_linux.yar'
+        checksum:
+         - 'bf1cde9c94c301cdc3b5486f2f3fe66b'
+         - '41ba1bd49cb22466e422098d184bd4267ef9529e'
+         - 'e875b1185577ff872fbaabde481cc196af03745c530403c8303f00fe35859bf7'
+options:
+    contentMatchDependsOnPathMatch: false
+    findInHardDrives: true
+    findInRemovableDrives: false
+    findInNetworkDrives: false
+    findInCDRomDrives: false
+output:
+    base64Files: true
+    filesCopyPath: ''
