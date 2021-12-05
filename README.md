@@ -31,7 +31,7 @@ Arguments:
 Depending on where you are looking for files, _FastFinder_ could be used with admin OR simple user rights. 
 
 ### Scan and export file match according to your needs
-a configuration file example is available [here](configuration.yaml.example) in this repository
+configuration examples are available [there](./examples)
 ``` 
 input:
     path: [] # match file path AND / OR file name based on simple string 
