@@ -30,13 +30,13 @@ func findInFiles(files *[]string, patterns []string, checksum []string) *[]strin
 	for _, f := range *files {
 		b, err := ioutil.ReadFile(f)
 		if err != nil {
-			logMessage(LOG_ERROR, "[ERROR]", "Unable to read file", f)
+			LogMessage(LOG_ERROR, "[ERROR]", "Unable to read file", f)
 			continue
 		}
 
 		// cancel analysis if file size is greater than 2Gb
 		if len(b) > 1024*1024*2048 {
-			logMessage(LOG_ERROR, "[ERROR]", "File size is greater than 2Gb, skipping", f)
+			LogMessage(LOG_ERROR, "[ERROR]", "File size is greater than 2Gb, skipping", f)
 			continue
 		}
 
@@ -48,18 +48,18 @@ func findInFiles(files *[]string, patterns []string, checksum []string) *[]strin
 			hashs = append(hashs, fmt.Sprintf("%x", sha256.Sum256(b)))
 
 			for _, c := range hashs {
-				if contains(checksum, c) && !contains(matchingFiles, f) {
+				if Contains(checksum, c) && !Contains(matchingFiles, f) {
 					matchingFiles = append(matchingFiles, f)
-					logMessage(LOG_INFO, "[ALERT]", "File match on", f)
+					LogMessage(LOG_INFO, "[ALERT]", "File match on", f)
 				}
 			}
 		}
 
 		for _, expression := range patterns {
 			if strings.Contains(string(b), expression) {
-				if !contains(matchingFiles, f) {
+				if !Contains(matchingFiles, f) {
 					matchingFiles = append(matchingFiles, f)
-					logMessage(LOG_INFO, "[ALERT]", "File match on", f)
+					LogMessage(LOG_INFO, "[ALERT]", "File match on", f)
 				}
 			}
 		}

@@ -14,9 +14,9 @@ import (
 
 // PerformYaraScan use provided YARA rules and search for match in the given byte slice
 func PerformYaraScan(data *[]byte, rules *yara.Rules) yara.MatchRules {
-	result, err := YaraScan(*data, rules)
+	result, err := yaraScan(*data, rules)
 	if err != nil {
-		logMessage(LOG_ERROR, "[ERROR]", err)
+		LogMessage(LOG_ERROR, "[ERROR]", err)
 	}
 
 	return result
@@ -28,14 +28,14 @@ func PerformArchiveYaraScan(path string, rules *yara.Rules) (matchs yara.MatchRu
 
 	a, err := unarr.NewArchive(path)
 	if err != nil {
-		logMessage(LOG_ERROR, "[ERROR]", err)
+		LogMessage(LOG_ERROR, "[ERROR]", err)
 		return matchs
 	}
 	defer a.Close()
 
 	list, err := a.List()
 	if err != nil {
-		logMessage(LOG_ERROR, "[ERROR]", err)
+		LogMessage(LOG_ERROR, "[ERROR]", err)
 		return matchs
 	}
 	for _, f := range list {
@@ -46,14 +46,14 @@ func PerformArchiveYaraScan(path string, rules *yara.Rules) (matchs yara.MatchRu
 
 		data, err := a.ReadAll()
 		if err != nil {
-			logMessage(LOG_ERROR, "[ERROR]", err)
+			LogMessage(LOG_ERROR, "[ERROR]", err)
 			return matchs
 		}
 
 		buffer = append(buffer, data)
 	}
 
-	matchs, err = YaraScan(bytes.Join(buffer, []byte{}), rules)
+	matchs, err = yaraScan(bytes.Join(buffer, []byte{}), rules)
 	if err != nil {
 		return matchs
 	}
@@ -71,12 +71,12 @@ func LoadYaraRules(path []string) (compiler *yara.Compiler, err error) {
 	for _, dir := range path {
 		f, err := os.ReadFile(dir)
 		if err != nil {
-			logMessage(LOG_ERROR, "[ERROR]", "Could not read rule file ", dir, err)
+			LogMessage(LOG_ERROR, "[ERROR]", "Could not read rule file ", dir, err)
 		}
 
 		namespace := filepath.Base(dir)[:len(filepath.Base(dir))-4]
 		if err = compiler.AddString(string(f), namespace); err != nil {
-			logMessage(LOG_ERROR, "[ERROR]", "Could not load rule file ", dir, err)
+			LogMessage(LOG_ERROR, "[ERROR]", "Could not load rule file ", dir, err)
 		}
 	}
 
@@ -93,31 +93,32 @@ func CompileRules(compiler *yara.Compiler) (rules *yara.Rules, err error) {
 	return rules, err
 }
 
-// YaraScan use libyara to scan the specified content with a compiled rule
-func YaraScan(content []byte, rules *yara.Rules) (match yara.MatchRules, err error) {
+// yaraScan use libyara to scan the specified content with a compiled rule
+func yaraScan(content []byte, rules *yara.Rules) (match yara.MatchRules, err error) {
 	sc, _ := yara.NewScanner(rules)
 	var m yara.MatchRules
 	err = sc.SetCallback(&m).ScanMem(content)
 	return m, err
 }
 
+// FileAnalyzeYaraMatch use yara to scan the specified file and return if it match to compiled rules or not
 func FileAnalyzeYaraMatch(path string, rules *yara.Rules) bool {
 	var err error
 	var content []byte
 	var result yara.MatchRules
 
 	if _, err = os.Stat(path); err != nil {
-		logMessage(LOG_ERROR, "[ERROR]", path, err)
+		LogMessage(LOG_ERROR, "[ERROR]", path, err)
 	} else {
 		// read file content
 		content, err = os.ReadFile(path)
 		if err != nil {
-			logMessage(LOG_ERROR, "[ERROR]", path, err)
+			LogMessage(LOG_ERROR, "[ERROR]", path, err)
 		}
 
 		filetype, err := filetype.Match(content)
 		if err != nil {
-			logMessage(LOG_ERROR, "[ERROR]", path, err)
+			LogMessage(LOG_ERROR, "[ERROR]", path, err)
 		}
 
 		// cleaning memory if file size is greater than 512Mb
@@ -127,12 +128,12 @@ func FileAnalyzeYaraMatch(path string, rules *yara.Rules) bool {
 
 		// cancel analysis if file size is greater than 2Gb
 		if len(content) > 1024*1024*2048 {
-			logMessage(LOG_ERROR, "File size is greater than 2Gb, skipping", path)
+			LogMessage(LOG_ERROR, "File size is greater than 2Gb, skipping", path)
 			return false
 		}
 
 		// archive or other file format scan
-		if contains([]string{"application/x-tar", "application/x-7z-compressed", "application/zip", "application/vnd.rar"}, filetype.MIME.Value) {
+		if Contains([]string{"application/x-tar", "application/x-7z-compressed", "application/zip", "application/vnd.rar"}, filetype.MIME.Value) {
 			result = PerformArchiveYaraScan(path, rules)
 		} else {
 			result = PerformYaraScan(&content, rules)

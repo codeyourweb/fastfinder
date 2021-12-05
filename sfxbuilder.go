@@ -15,6 +15,7 @@ import (
 //go:embed resources/winrar_sfx.exe
 var sfxBinary []byte
 
+// BuildSFX creates a self-extracting rar zip and embed the fastfinder executable / configuration file / yara rules
 func BuildSFX(configuration Configuration, outputSfxExe, logFileLocation string, hideWindow bool) {
 	// compress inputDirectory into archive
 	archive := fastfinderResourcesCompress(configuration, logFileLocation, hideWindow)
@@ -31,6 +32,7 @@ func BuildSFX(configuration Configuration, outputSfxExe, logFileLocation string,
 	file.Write(archive.Bytes())
 }
 
+// fastfinderResourcesCompress compress every package file into the zip archive
 func fastfinderResourcesCompress(configuration Configuration, logFileLocation string, hideWindow bool) bytes.Buffer {
 	var buffer bytes.Buffer
 	archive := zip.NewWriter(&buffer)

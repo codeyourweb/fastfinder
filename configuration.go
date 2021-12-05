@@ -50,7 +50,7 @@ func (c *Configuration) getConfiguration(configFile string) *Configuration {
 		log.Fatalf("Configuration file parsing error: %v", err)
 	}
 
-	environmentVariables := getEnvironmentVariables()
+	environmentVariables := GetEnvironmentVariables()
 
 	for i := 0; i < len(c.Input.Path); i++ {
 		// replace environment variables

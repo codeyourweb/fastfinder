@@ -43,6 +43,7 @@ var (
 	procShowWindow       = modUser32.NewProc("ShowWindow")
 )
 
+// HideConsoleWindow hide the process console window
 func HideConsoleWindow() {
 	hwnd, _, _ := procGetConsoleWindow.Call()
 	if hwnd == 0 {
@@ -52,6 +53,7 @@ func HideConsoleWindow() {
 	procShowWindow.Call(hwnd, 0)
 }
 
+// CreateMutex creates a named mutex to avoid multiple instance run
 func CreateMutex(name string) (uintptr, error) {
 	mutexNamePtr, err := syscall.UTF16PtrFromString(name)
 	if err != nil {
@@ -67,7 +69,8 @@ func CreateMutex(name string) (uintptr, error) {
 	}
 }
 
-func getEnvironmentVariables() (environmentVariables []Env) {
+// GetEnvironmentVariables return a list of environment variables in []Env slice
+func GetEnvironmentVariables() (environmentVariables []Env) {
 	for _, item := range os.Environ() {
 		envPair := strings.SplitN(item, "=", 2)
 		env := Env{
@@ -80,12 +83,13 @@ func getEnvironmentVariables() (environmentVariables []Env) {
 	return environmentVariables
 }
 
-func listFilesRecursively(path string) *[]string {
+// ListFilesRecursively returns a list of files in the specified path and its subdirectories
+func ListFilesRecursively(path string) *[]string {
 	var files []string
 
 	err := filepath.Walk(path, func(path string, f os.FileInfo, err error) error {
 		if err != nil {
-			logMessage(LOG_ERROR, "[ERROR]", err)
+			LogMessage(LOG_ERROR, "[ERROR]", err)
 			return filepath.SkipDir
 		}
 
@@ -96,13 +100,14 @@ func listFilesRecursively(path string) *[]string {
 	})
 
 	if err != nil {
-		logMessage(LOG_ERROR, "[ERROR]", err)
+		LogMessage(LOG_ERROR, "[ERROR]", err)
 	}
 
 	return &files
 }
 
-func enumLogicalDrives() (drivesInfo []DriveInfo) {
+// EnumLogicalDrives returns a list of all logical drives letters on the system.
+func EnumLogicalDrives() (drivesInfo []DriveInfo) {
 	var drives []string
 	if ret, _, callErr := procGetLogicalDrives.Call(); callErr != windows.ERROR_SUCCESS {
 		return []DriveInfo{}
@@ -130,15 +135,7 @@ func enumLogicalDrives() (drivesInfo []DriveInfo) {
 	return drivesInfo
 }
 
-func bitsToDrives(bits uint32) (drives []string) {
-	for i := 0; i < 26; i++ {
-		if bits&(1<<uint(i)) != 0 {
-			drives = append(drives, string('A'+i))
-		}
-	}
-	return drives
-}
-
+// FileCopy copy the specified file from src to dst path, and eventually encode its content to base64
 func FileCopy(src, dst string, base64Encode bool) {
 	dst += filepath.Base(src) + ".fastfinder"
 	srcFile, err := os.Open(src)
@@ -167,7 +164,8 @@ func FileCopy(src, dst string, base64Encode bool) {
 	}
 }
 
-func contains(s []string, str string) bool {
+// Contains checks if a string is contained in a slice of strings
+func Contains(s []string, str string) bool {
 	for _, v := range s {
 		if v == str {
 			return true
@@ -175,4 +173,14 @@ func contains(s []string, str string) bool {
 	}
 
 	return false
+}
+
+// map drive DWORD returned by EnumLogicalDrives to drive letters
+func bitsToDrives(bits uint32) (drives []string) {
+	for i := 0; i < 26; i++ {
+		if bits&(1<<uint(i)) != 0 {
+			drives = append(drives, string('A'+i))
+		}
+	}
+	return drives
 }

@@ -19,7 +19,7 @@ func main() {
 	var err error
 
 	if _, err = CreateMutex("fastfinder"); err != nil {
-		logMessage(LOG_ERROR, "[ERROR]", "Only one instance or fastfinder can be launched")
+		LogMessage(LOG_ERROR, "[ERROR]", "Only one instance or fastfinder can be launched")
 		os.Exit(1)
 	}
 
@@ -54,40 +54,40 @@ func main() {
 
 	// check for input configuration
 	if len(config.Input.Path) == 0 && len(config.Input.Content.Grep) == 0 && len(config.Input.Content.Yara) == 0 {
-		logMessage(LOG_ERROR, "[ERROR]", "Input parameters empty - cannot find any item")
+		LogMessage(LOG_ERROR, "[ERROR]", "Input parameters empty - cannot find any item")
 		os.Exit(1)
 	}
 
 	// sfx building option
 	if len(*sfxPath) > 0 {
 		BuildSFX(config, *sfxPath, *outLogPath, *hideWindow)
-		logMessage(LOG_INFO, "[INFO]", "package generated successfully at", *sfxPath)
+		LogMessage(LOG_INFO, "[INFO]", "package generated successfully at", *sfxPath)
 		os.Exit(0)
 	}
 
 	// if yara rules mentionned - compile them
 	if len(config.Input.Content.Yara) > 0 {
-		logMessage(LOG_INFO, "[INIT]", "Compiling Yara rules")
+		LogMessage(LOG_INFO, "[INIT]", "Compiling Yara rules")
 		compiler, err = LoadYaraRules(config.Input.Content.Yara)
 		if err != nil {
-			logMessage(LOG_ERROR, err)
+			LogMessage(LOG_ERROR, err)
 			os.Exit(1)
 		}
 
 		rules, err = CompileRules(compiler)
 		if err != nil {
-			logMessage(LOG_ERROR, err)
+			LogMessage(LOG_ERROR, err)
 			os.Exit(1)
 		}
 	}
 
 	// drives enumeration
-	logMessage(LOG_INFO, "[INIT]", "Enumerating drives")
+	LogMessage(LOG_INFO, "[INIT]", "Enumerating drives")
 	var basePaths []string
-	drives := enumLogicalDrives()
+	drives := EnumLogicalDrives()
 
 	if len(drives) == 0 {
-		logMessage(LOG_ERROR, "[ERROR]", "Unable to find drives")
+		LogMessage(LOG_ERROR, "[ERROR]", "Unable to find drives")
 		os.Exit(1)
 	}
 	for _, drive := range drives {
@@ -100,30 +100,30 @@ func main() {
 	}
 
 	if len(basePaths) == 0 {
-		logMessage(LOG_ERROR, "[ERROR]", "No drive corresponding to your configuration drive type")
+		LogMessage(LOG_ERROR, "[ERROR]", "No drive corresponding to your configuration drive type")
 		os.Exit(1)
 	} else {
-		logMessage(LOG_INFO, "[INIT]", "Looking for the following drives", basePaths)
+		LogMessage(LOG_INFO, "[INIT]", "Looking for the following drives", basePaths)
 	}
 
-	logMessage(LOG_INFO, "[INIT]", "Looking for the following paths patterns:")
+	LogMessage(LOG_INFO, "[INIT]", "Looking for the following paths patterns:")
 	for _, p := range config.Input.Path {
-		logMessage(LOG_INFO, "  |", p)
+		LogMessage(LOG_INFO, "  |", p)
 	}
 
 	// start main routine
-	logMessage(LOG_INFO, "[INFO]", "Enumerating files")
+	LogMessage(LOG_INFO, "[INFO]", "Enumerating files")
 	for _, basePath := range basePaths {
-		logMessage(LOG_INFO, "[INFO]", "Looking for files in", basePath)
+		LogMessage(LOG_INFO, "[INFO]", "Looking for files in", basePath)
 		var matchContent *[]string
 		var matchPattern *[]string
 
 		// files listing
-		files := listFilesRecursively(basePath)
+		files := ListFilesRecursively(basePath)
 
 		// match file path
 		if len(config.Input.Path) > 0 {
-			logMessage(LOG_INFO, "[INFO]", "Checking for paths matchs in", basePath)
+			LogMessage(LOG_INFO, "[INFO]", "Checking for paths matchs in", basePath)
 			var pathRegexPatterns []*regexp2.Regexp
 			for _, pattern := range config.Input.Path {
 				re := regexp2.MustCompile(pattern, regexp2.IgnoreCase)
@@ -132,7 +132,7 @@ func main() {
 			matchPattern = pathsFinder(files, pathRegexPatterns)
 			if !config.Options.ContentMatchDependsOnPathMatch {
 				for _, file := range *matchPattern {
-					logMessage(LOG_INFO, "[ALERT]", "File match on", file)
+					LogMessage(LOG_INFO, "[ALERT]", "File match on", file)
 				}
 			}
 
@@ -142,7 +142,7 @@ func main() {
 
 		// match content - contains
 		if len(config.Input.Content.Grep) > 0 || len(config.Input.Content.Checksum) > 0 {
-			logMessage(LOG_INFO, "[INFO]", "Checking for content and checksum matchs in", basePath)
+			LogMessage(LOG_INFO, "[INFO]", "Checking for content and checksum matchs in", basePath)
 			if config.Options.ContentMatchDependsOnPathMatch {
 				matchContent = findInFiles(matchPattern, config.Input.Content.Grep, config.Input.Content.Checksum)
 			} else {
@@ -152,18 +152,18 @@ func main() {
 
 		// match content - yara
 		if len(config.Input.Content.Yara) > 0 {
-			logMessage(LOG_INFO, "[INFO]", "Checking for yara matchs in", basePath)
+			LogMessage(LOG_INFO, "[INFO]", "Checking for yara matchs in", basePath)
 			if config.Options.ContentMatchDependsOnPathMatch {
 				for _, file := range *matchPattern {
-					if FileAnalyzeYaraMatch(file, rules) && !contains(*matchContent, file) {
-						logMessage(LOG_INFO, "[ALERT]", "File match on", file)
+					if FileAnalyzeYaraMatch(file, rules) && !Contains(*matchContent, file) {
+						LogMessage(LOG_INFO, "[ALERT]", "File match on", file)
 						*matchContent = append(*matchContent, file)
 					}
 				}
 			} else {
 				for _, file := range *files {
-					if FileAnalyzeYaraMatch(file, rules) && !contains(*matchContent, file) {
-						logMessage(LOG_INFO, "[ALERT]", "File match on", file)
+					if FileAnalyzeYaraMatch(file, rules) && !Contains(*matchContent, file) {
+						LogMessage(LOG_INFO, "[ALERT]", "File match on", file)
 						*matchContent = append(*matchContent, file)
 					}
 				}
@@ -178,14 +178,14 @@ func main() {
 		// handle false condition on ContentMatchDependsOnPathMatch options
 		if !config.Options.ContentMatchDependsOnPathMatch {
 			for _, p := range *matchPattern {
-				if !contains(*matchContent, p) {
+				if !Contains(*matchContent, p) {
 					*matchContent = append(*matchContent, p)
 				}
 			}
 		}
 
 		// copy matching files
-		logMessage(LOG_INFO, "[INFO]", "Copy all matching files")
+		LogMessage(LOG_INFO, "[INFO]", "Copy all matching files")
 		for _, f := range *matchContent {
 			FileCopy(f, config.Output.FilesCopyPath, config.Output.Base64Files)
 		}
