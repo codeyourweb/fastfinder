@@ -12,7 +12,8 @@ import (
 	"github.com/dlclark/regexp2"
 )
 
-func pathsFinder(files *[]string, patterns []*regexp2.Regexp) *[]string {
+// PathsFinder try to match regular expressions in file paths slice
+func PathsFinder(files *[]string, patterns []*regexp2.Regexp) *[]string {
 	var matchingFiles []string
 	for _, expression := range patterns {
 		for _, f := range *files {
@@ -25,7 +26,8 @@ func pathsFinder(files *[]string, patterns []*regexp2.Regexp) *[]string {
 	return &matchingFiles
 }
 
-func findInFiles(files *[]string, patterns []string, checksum []string) *[]string {
+// FindInFiles check for pattern or checksum match in files slice
+func FindInFiles(files *[]string, patterns []string, checksum []string) *[]string {
 	var matchingFiles []string
 	for _, f := range *files {
 		b, err := ioutil.ReadFile(f)

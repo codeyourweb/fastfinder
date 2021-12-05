@@ -129,7 +129,7 @@ func main() {
 				re := regexp2.MustCompile(pattern, regexp2.IgnoreCase)
 				pathRegexPatterns = append(pathRegexPatterns, re)
 			}
-			matchPattern = pathsFinder(files, pathRegexPatterns)
+			matchPattern = PathsFinder(files, pathRegexPatterns)
 			if !config.Options.ContentMatchDependsOnPathMatch {
 				for _, file := range *matchPattern {
 					LogMessage(LOG_INFO, "[ALERT]", "File match on", file)
@@ -144,9 +144,9 @@ func main() {
 		if len(config.Input.Content.Grep) > 0 || len(config.Input.Content.Checksum) > 0 {
 			LogMessage(LOG_INFO, "[INFO]", "Checking for content and checksum matchs in", basePath)
 			if config.Options.ContentMatchDependsOnPathMatch {
-				matchContent = findInFiles(matchPattern, config.Input.Content.Grep, config.Input.Content.Checksum)
+				matchContent = FindInFiles(matchPattern, config.Input.Content.Grep, config.Input.Content.Checksum)
 			} else {
-				matchContent = findInFiles(files, config.Input.Content.Grep, config.Input.Content.Checksum)
+				matchContent = FindInFiles(files, config.Input.Content.Grep, config.Input.Content.Checksum)
 			}
 		}
 
