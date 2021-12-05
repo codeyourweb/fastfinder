@@ -24,7 +24,7 @@ func main() {
 	}
 
 	// parse configuration file
-	parser := argparse.NewParser("fastfinder", "Incident Response - Fast suspicious file finder")
+	parser := argparse.NewParser("fastfinder", "(v1.2) Incident Response - Fast suspicious file finder")
 	configPath := parser.String("c", "configuration", &argparse.Options{Required: true, Default: "configuration.yaml", Help: "Fastfind configuration file"})
 	sfxPath := parser.String("b", "build", &argparse.Options{Required: false, Help: "Output a standalone package with configuration and rules in a single binary"})
 	outLogPath := parser.String("o", "output", &argparse.Options{Required: false, Help: "Save fastfinder logs in the specified file"})
