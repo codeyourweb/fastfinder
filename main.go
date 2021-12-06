@@ -5,8 +5,11 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"runtime"
+	"strings"
 
 	"github.com/akamensky/argparse"
 	"github.com/dlclark/regexp2"
@@ -24,17 +27,27 @@ func main() {
 	}
 
 	// parse configuration file
-	parser := argparse.NewParser("fastfinder", "(v1.2) Incident Response - Fast suspicious file finder")
-	configPath := parser.String("c", "configuration", &argparse.Options{Required: true, Default: "configuration.yaml", Help: "Fastfind configuration file"})
+	parser := argparse.NewParser("fastfinder", "Incident Response - Fast suspicious file finder")
+	configPath := parser.String("c", "configuration", &argparse.Options{Required: false, Default: "configuration.yaml", Help: "Fastfind configuration file"})
 	sfxPath := parser.String("b", "build", &argparse.Options{Required: false, Help: "Output a standalone package with configuration and rules in a single binary"})
 	outLogPath := parser.String("o", "output", &argparse.Options{Required: false, Help: "Save fastfinder logs in the specified file"})
 	hideWindow := parser.Flag("n", "nowindow", &argparse.Options{Required: false, Help: "Hide fastfinder window"})
+	finderVersion := parser.Flag("v", "version", &argparse.Options{Required: false, Help: "Display fastfinder version"})
 
 	err = parser.Parse(os.Args)
 	if err != nil {
 		log.Fatal(parser.Usage(err))
 	}
 
+	// version
+	if *finderVersion {
+		fmt.Println("fastfinder v1.3b")
+		if !Contains(os.Args, "-c") && !Contains(os.Args, "--configuration") {
+			os.Exit(0)
+		}
+	}
+
+	// configuration parsing
 	var config Configuration
 	config.getConfiguration(*configPath)
 	if config.Output.FilesCopyPath != "" {
@@ -84,18 +97,35 @@ func main() {
 	// drives enumeration
 	LogMessage(LOG_INFO, "[INIT]", "Enumerating drives")
 	var basePaths []string
-	drives := EnumLogicalDrives()
+	drives, excludedPaths := EnumLogicalDrives()
 
 	if len(drives) == 0 {
 		LogMessage(LOG_ERROR, "[ERROR]", "Unable to find drives")
 		os.Exit(1)
 	}
+
 	for _, drive := range drives {
 		if (drive.Type == DRIVE_REMOVABLE && config.Options.FindInRemovableDrives) ||
 			(drive.Type == DRIVE_FIXED && config.Options.FindInHardDrives) ||
 			(drive.Type == DRIVE_REMOTE && config.Options.FindInNetworkDrives) ||
 			(drive.Type == DRIVE_CDROM && config.Options.FindInCDRomDrives) {
-			basePaths = append(basePaths, drive.Name)
+			if runtime.GOOS == "windows" || len(basePaths) == 0 {
+				basePaths = append(basePaths, drive.Name)
+			} else {
+				alreadyParsed := false
+				for _, p := range basePaths {
+					if !strings.HasPrefix(drive.Name, p) {
+						alreadyParsed = true
+					}
+				}
+				if !alreadyParsed {
+					basePaths = append(basePaths, drive.Name)
+				}
+			}
+		} else {
+			if runtime.GOOS != "windows" {
+				excludedPaths = append(excludedPaths, drive.Name)
+			}
 		}
 	}
 
@@ -104,6 +134,13 @@ func main() {
 		os.Exit(1)
 	} else {
 		LogMessage(LOG_INFO, "[INIT]", "Looking for the following drives", basePaths)
+	}
+
+	if len(excludedPaths) > 0 {
+		LogMessage(LOG_INFO, "[INFO]", "Excluding the following paths:")
+		for _, p := range excludedPaths {
+			LogMessage(LOG_INFO, "  |", p)
+		}
 	}
 
 	if len(config.Input.Path) > 0 {
@@ -121,7 +158,7 @@ func main() {
 		var matchPattern *[]string
 
 		// files listing
-		files := ListFilesRecursively(basePath)
+		files := ListFilesRecursively(basePath, excludedPaths)
 
 		// match file path
 		if len(config.Input.Path) > 0 {
@@ -178,7 +215,7 @@ func main() {
 		}
 
 		// handle false condition on ContentMatchDependsOnPathMatch options
-		if !config.Options.ContentMatchDependsOnPathMatch {
+		if len(config.Input.Path) > 0 && !config.Options.ContentMatchDependsOnPathMatch {
 			for _, p := range *matchPattern {
 				if !Contains(*matchContent, p) {
 					*matchContent = append(*matchContent, p)
@@ -187,9 +224,13 @@ func main() {
 		}
 
 		// copy matching files
-		LogMessage(LOG_INFO, "[INFO]", "Copy all matching files")
-		for _, f := range *matchContent {
-			FileCopy(f, config.Output.FilesCopyPath, config.Output.Base64Files)
+		if len(*matchContent) > 0 {
+			LogMessage(LOG_INFO, "[INFO]", "Copy all matching files")
+			for _, f := range *matchContent {
+				FileCopy(f, config.Output.FilesCopyPath, config.Output.Base64Files)
+			}
+		} else {
+			LogMessage(LOG_INFO, "[INFO]", "No match found")
 		}
 	}
 }

@@ -54,7 +54,7 @@ func CreateMutex(name string) (uintptr, error) {
 }
 
 // EnumLogicalDrives returns a list of all logical drives letters on the system.
-func EnumLogicalDrives() (drivesInfo []DriveInfo) {
+func EnumLogicalDrives() (drivesInfo []DriveInfo, excludedPaths []string) {
 	var drives []string
 	if ret, _, callErr := procGetLogicalDrives.Call(); callErr != windows.ERROR_SUCCESS {
 		return []DriveInfo{}
@@ -79,7 +79,7 @@ func EnumLogicalDrives() (drivesInfo []DriveInfo) {
 		drivesInfo = append(drivesInfo, driveInfo)
 	}
 
-	return drivesInfo
+	return drivesInfo, []string{}
 }
 
 // map drive DWORD returned by EnumLogicalDrives to drive letters
