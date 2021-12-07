@@ -1,8 +1,5 @@
 //go:build linux
 
-// export CGO_CFLAGS="-I/opt/yara-4.1.3/libyara/include"
-// export CGO_LDFLAGS="-L/opt/yara-4.1.3/libyara/.libs -lyara"
-
 package main
 
 import (
@@ -51,12 +48,6 @@ func (c *cmdRunner) Run(cmd string, args []string) (io.Reader, error) {
 	}
 }
 
-func (c *cmdRunner) Exec(cmd string, args []string) string {
-	command := exec.Command(cmd, args...)
-	outputBytes, _ := command.CombinedOutput()
-	return string(outputBytes[:])
-}
-
 // HideConsoleWindow hide the process console window
 func HideConsoleWindow() {
 	LogMessage(LOG_INFO, "[COMPAT]", "Hide console option not implented on linux. You should consider run this program as a task")
@@ -94,34 +85,69 @@ func CreateMutex(name string) (uintptr, error) {
 // EnumLogicalDrives returns a list of all logical drives letters on the system.
 func EnumLogicalDrives() (drivesInfo []DriveInfo, excludedPaths []string) {
 	excludedPaths = []string{"/dev", "/lost+found", "/proc", "/media/floppy"}
-
 	disks, err := Lsblk()
 	if err != nil {
 		LogMessage(LOG_ERROR, "[COMPAT]", "Error getting disks info: %v - try to parse from /", err)
-		return drivesInfo, excludedPaths
-	}
+	} else {
+		// Get fixed / removable / cdrom drives
+		for _, disk := range disks {
+			if disk["mountpoint"] != "" {
+				switch disk["type"] {
+				case "part":
+					if IsUSBStorage("/dev/" + disk["name"]) {
+						drivesInfo = append(drivesInfo, DriveInfo{Name: disk["mountpoint"], Type: DRIVE_REMOVABLE})
+					} else {
+						drivesInfo = append(drivesInfo, DriveInfo{Name: disk["mountpoint"], Type: DRIVE_FIXED})
+					}
+				case "rom":
+					drivesInfo = append(drivesInfo, DriveInfo{Name: disk["mountpoint"], Type: DRIVE_CDROM})
+				default:
+					excludedPaths = append(excludedPaths, disk["mountpoint"])
 
-	for _, disk := range disks {
-		if disk["mountpoint"] != "" {
-			switch disk["type"] {
-			case "part":
-				if isUSBStorage("/dev/" + disk["name"]) {
-					drivesInfo = append(drivesInfo, DriveInfo{Name: disk["mountpoint"], Type: DRIVE_REMOVABLE})
-				} else {
-					drivesInfo = append(drivesInfo, DriveInfo{Name: disk["mountpoint"], Type: DRIVE_FIXED})
 				}
-			case "rom":
-				drivesInfo = append(drivesInfo, DriveInfo{Name: disk["mountpoint"], Type: DRIVE_CDROM})
-			default:
-				excludedPaths = append(excludedPaths, disk["mountpoint"])
-
 			}
 		}
+	}
+
+	// Get network drives
+	nDrives, err := FindInNetworkDrives()
+	if err != nil {
+		LogMessage(LOG_ERROR, "[COMPAT]", "Error getting network drives: %v", err)
+	}
+
+	for _, driveName := range nDrives {
+		drivesInfo = append(drivesInfo, DriveInfo{Name: driveName, Type: DRIVE_REMOTE})
 	}
 
 	return drivesInfo, excludedPaths
 }
 
+// FindInNetworkDrives uses  df -aT and returns a list of all valid fuse mount
+func FindInNetworkDrives() (mounts []string, err error) {
+	out, err := exec.Command("df", "-aT").Output()
+	if err != nil {
+		return mounts, err
+	}
+
+	outlines := strings.Split(string(out), "\n")
+
+	for _, line := range outlines {
+		parsedLine := strings.Fields(line)
+		if len(line) > 5 &&
+			strings.HasPrefix(parsedLine[len(parsedLine)-1], "/") &&
+			(strings.Contains(parsedLine[0], "fuse") || strings.Contains(parsedLine[1], "fuse")) {
+			a, _ := strconv.ParseInt(parsedLine[3], 10, 64)
+			b, _ := strconv.ParseInt(parsedLine[4], 10, 64)
+			if a > 0 && b > 0 {
+				mounts = append(mounts, parsedLine[len(parsedLine)-1])
+			}
+		}
+	}
+
+	return mounts, nil
+}
+
+// Lsblk returns a map of all disks and their properties
 func Lsblk() (disks, error) {
 	var cmdrun = cmdRunner{}
 	rr, err := cmdrun.Run("lsblk", []string{"-P", "-b", "-o", "NAME,TYPE,MOUNTPOINT"})
@@ -156,7 +182,8 @@ func parser_lsblk(r io.Reader) map[string]map[string]string {
 	return lsblk
 }
 
-func isUSBStorage(device string) bool {
+// IsUSBStorage returns true if the given device is a USB storage based on udevadm linux command return
+func IsUSBStorage(device string) bool {
 	deviceVerifier := "ID_USB_DRIVER=usb-storage"
 	cmd := "udevadm"
 	args := []string{"info", "-q", "property", "-n", device}

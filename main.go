@@ -73,6 +73,10 @@ func main() {
 
 	// sfx building option
 	if len(*sfxPath) > 0 {
+		if runtime.GOOS != "windows" {
+			LogMessage(LOG_ERROR, "[ERROR]", "Standalone package can be built only on Windows")
+			os.Exit(1)
+		}
 		BuildSFX(config, *sfxPath, *outLogPath, *hideWindow)
 		LogMessage(LOG_INFO, "[INFO]", "package generated successfully at", *sfxPath)
 		os.Exit(0)
