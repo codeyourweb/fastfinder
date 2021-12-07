@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"runtime"
+	"sort"
 	"strings"
 
 	"github.com/akamensky/argparse"
@@ -122,7 +123,7 @@ func main() {
 			} else {
 				alreadyParsed := false
 				for _, p := range basePaths {
-					if !strings.HasPrefix(drive.Name, p) {
+					if len(drive.Name) > len(p) && !strings.HasPrefix(drive.Name, p) {
 						alreadyParsed = true
 					}
 				}
@@ -141,7 +142,10 @@ func main() {
 		LogMessage(LOG_ERROR, "[ERROR]", "No drive corresponding to your configuration drive type")
 		os.Exit(1)
 	} else {
-		LogMessage(LOG_INFO, "[INIT]", "Looking for the following drives", basePaths)
+		LogMessage(LOG_INFO, "[INIT]", "Looking for the following drives:")
+		for _, p := range basePaths {
+			LogMessage(LOG_INFO, "  |", p)
+		}
 	}
 
 	if len(excludedPaths) > 0 {
@@ -158,15 +162,23 @@ func main() {
 		}
 	}
 
+	if runtime.GOOS != "windows" {
+		sort.Slice(basePaths, func(i, j int) bool {
+			return len(basePaths[i]) > len(basePaths[j])
+		})
+	}
+
 	// start main routine
-	LogMessage(LOG_INFO, "[INFO]", "Enumerating files")
 	for _, basePath := range basePaths {
-		LogMessage(LOG_INFO, "[INFO]", "Looking for files in", basePath)
+		LogMessage(LOG_INFO, "[INFO]", "Enumerating files in", basePath)
 		var matchContent *[]string
 		var matchPattern *[]string
 
 		// files listing
 		files := ListFilesRecursively(basePath, excludedPaths)
+		if runtime.GOOS != "windows" {
+			excludedPaths = append(excludedPaths, basePath)
+		}
 
 		// match file path
 		if len(config.Input.Path) > 0 {

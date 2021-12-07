@@ -55,11 +55,13 @@ func ListFilesRecursively(path string, excludedPaths []string) *[]string {
 
 		if !f.IsDir() {
 			for _, excludedPath := range excludedPaths {
-				if len(excludedPath) > len(path) && strings.HasPrefix(path, excludedPath) {
+				if len(excludedPath) > 1 && strings.HasPrefix(path, excludedPath) && len(path) > len(excludedPath) {
 					LogMessage(LOG_INFO, "[INFO]", "Skipping dir", path)
 					return filepath.SkipDir
 				}
+			}
 
+			if !Contains(files, path) {
 				files = append(files, path)
 			}
 		}
