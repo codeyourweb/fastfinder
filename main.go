@@ -28,11 +28,12 @@ func main() {
 
 	// parse configuration file
 	parser := argparse.NewParser("fastfinder", "Incident Response - Fast suspicious file finder")
-	configPath := parser.String("c", "configuration", &argparse.Options{Required: false, Default: "configuration.yaml", Help: "Fastfind configuration file"})
-	sfxPath := parser.String("b", "build", &argparse.Options{Required: false, Help: "Output a standalone package with configuration and rules in a single binary"})
-	outLogPath := parser.String("o", "output", &argparse.Options{Required: false, Help: "Save fastfinder logs in the specified file"})
-	hideWindow := parser.Flag("n", "nowindow", &argparse.Options{Required: false, Help: "Hide fastfinder window"})
-	finderVersion := parser.Flag("v", "version", &argparse.Options{Required: false, Help: "Display fastfinder version"})
+	pConfigPath := parser.String("c", "configuration", &argparse.Options{Required: false, Default: "configuration.yaml", Help: "Fastfind configuration file"})
+	pSfxPath := parser.String("b", "build", &argparse.Options{Required: false, Help: "Output a standalone package with configuration and rules in a single binary"})
+	pOutLogPath := parser.String("o", "output", &argparse.Options{Required: false, Help: "Save fastfinder logs in the specified file"})
+	pHideWindow := parser.Flag("n", "nowindow", &argparse.Options{Required: false, Help: "Hide fastfinder window"})
+	pShowProgress := parser.Flag("p", "showprogress", &argparse.Options{Required: false, Help: "Display I/O analysis progress"})
+	pFinderVersion := parser.Flag("v", "version", &argparse.Options{Required: false, Help: "Display fastfinder version"})
 
 	err = parser.Parse(os.Args)
 	if err != nil {
@@ -40,29 +41,32 @@ func main() {
 	}
 
 	// version
-	if *finderVersion {
+	if *pFinderVersion {
 		fmt.Println("fastfinder v1.3b")
 		if !Contains(os.Args, "-c") && !Contains(os.Args, "--configuration") {
 			os.Exit(0)
 		}
 	}
 
+	// progressbar
+	EnableProgressbar(*pShowProgress)
+
 	// configuration parsing
 	var config Configuration
-	config.getConfiguration(*configPath)
+	config.getConfiguration(*pConfigPath)
 	if config.Output.FilesCopyPath != "" {
 		config.Output.FilesCopyPath = "./"
 	}
 
 	// window hidden
-	if *hideWindow {
+	if *pHideWindow {
 		HideConsoleWindow()
 	}
 
 	// init file logging
-	if len(*outLogPath) > 0 {
-		StdoutToLogFile(*outLogPath)
-		StderrToLogFile(*outLogPath)
+	if len(*pOutLogPath) > 0 {
+		StdoutToLogFile(*pOutLogPath)
+		StderrToLogFile(*pOutLogPath)
 	}
 
 	// check for input configuration
@@ -72,13 +76,13 @@ func main() {
 	}
 
 	// sfx building option
-	if len(*sfxPath) > 0 {
+	if len(*pSfxPath) > 0 {
 		if runtime.GOOS != "windows" {
 			LogMessage(LOG_ERROR, "[ERROR]", "Standalone package can be built only on Windows")
 			os.Exit(1)
 		}
-		BuildSFX(config, *sfxPath, *outLogPath, *hideWindow)
-		LogMessage(LOG_INFO, "[INFO]", "package generated successfully at", *sfxPath)
+		BuildSFX(config, *pSfxPath, *pOutLogPath, *pHideWindow)
+		LogMessage(LOG_INFO, "[INFO]", "package generated successfully at", *pSfxPath)
 		os.Exit(0)
 	}
 
@@ -197,14 +201,18 @@ func main() {
 		if len(config.Input.Content.Yara) > 0 {
 			LogMessage(LOG_INFO, "[INFO]", "Checking for yara matchs in", basePath)
 			if config.Options.ContentMatchDependsOnPathMatch {
+				InitProgressbar(int64(len(*matchPattern)))
 				for _, file := range *matchPattern {
+					ProgressBarStep()
 					if FileAnalyzeYaraMatch(file, rules) && !Contains(*matchContent, file) {
 						LogMessage(LOG_INFO, "[ALERT]", "File match on", file)
 						*matchContent = append(*matchContent, file)
 					}
 				}
 			} else {
+				InitProgressbar(int64(len(*files)))
 				for _, file := range *files {
+					ProgressBarStep()
 					if FileAnalyzeYaraMatch(file, rules) && !Contains(*matchContent, file) {
 						LogMessage(LOG_INFO, "[ALERT]", "File match on", file)
 						*matchContent = append(*matchContent, file)
@@ -230,7 +238,9 @@ func main() {
 		// copy matching files
 		if len(*matchContent) > 0 {
 			LogMessage(LOG_INFO, "[INFO]", "Copy all matching files")
+			InitProgressbar(int64(len(*matchPattern)))
 			for _, f := range *matchContent {
+				ProgressBarStep()
 				FileCopy(f, config.Output.FilesCopyPath, config.Output.Base64Files)
 			}
 		} else {
