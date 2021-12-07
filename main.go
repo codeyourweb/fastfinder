@@ -43,7 +43,7 @@ func main() {
 
 	// version
 	if *pFinderVersion {
-		fmt.Println("fastfinder v1.3b")
+		fmt.Println("fastfinder v1.3")
 		if !Contains(os.Args, "-c") && !Contains(os.Args, "--configuration") {
 			os.Exit(0)
 		}
