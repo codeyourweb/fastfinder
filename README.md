@@ -64,8 +64,14 @@ output:
 * input content grep strings are always case SENSITIVE
 * backslashes haven't to be escaped on simple string pattern (see example) 
 
-## About this project and future versions
+## About this project
 I initially created this project to automate the creation of fastfind on a wide computer network. 
 It fulfills the needs I have today, nevertheless if you have complementary ideas, do not hesitate 
 to ask for, I will see to implement them if they can be useful for everyone.
 On the other hand, pull request will be studied carefully.
+
+## Future releases
+I don't plan to add any additional features right now. The next release will be focused on:
+* Stability / performance improvements
+* Unit testing / Code testing coverage / CI
+* Build more examples based on live malwares tradecraft and threat actor campaigns

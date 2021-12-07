@@ -3,12 +3,6 @@
 package main
 
 import (
-	"encoding/base64"
-	"io"
-	"log"
-	"os"
-	"path/filepath"
-	"strings"
 	"syscall"
 	"unsafe"
 
@@ -57,7 +51,7 @@ func CreateMutex(name string) (uintptr, error) {
 func EnumLogicalDrives() (drivesInfo []DriveInfo, excludedPaths []string) {
 	var drives []string
 	if ret, _, callErr := procGetLogicalDrives.Call(); callErr != windows.ERROR_SUCCESS {
-		return []DriveInfo{}
+		return []DriveInfo{}, []string{}
 	} else {
 		drives = bitsToDrives(uint32(ret))
 	}
@@ -67,7 +61,7 @@ func EnumLogicalDrives() (drivesInfo []DriveInfo, excludedPaths []string) {
 		driveInfo.Name = drive + ":\\"
 		drivePtr, err := syscall.UTF16PtrFromString(drive + ":")
 		if err != nil {
-			return drivesInfo
+			return drivesInfo, []string{}
 		}
 
 		if ret, _, callErr := procGetDriveTypeW.Call(uintptr(unsafe.Pointer(drivePtr))); callErr != windows.ERROR_SUCCESS {

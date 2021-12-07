@@ -61,9 +61,7 @@ func ListFilesRecursively(path string, excludedPaths []string) *[]string {
 				}
 			}
 
-			if !Contains(files, path) {
-				files = append(files, path)
-			}
+			files = append(files, path)
 		}
 		return nil
 	})
