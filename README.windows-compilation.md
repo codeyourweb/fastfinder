@@ -1,7 +1,6 @@
+# Compiling instruction for _FastFinder_ on Windows
 
-# Installing _FastFinder_ on Windows
-
-_FastFinder_ is design for Windows platform but it's a little bit tricky because it's strongly dependant of go-yara and CGO. Here's a little step by step guide: 
+_FastFinder_ was originally designed for Windows platform but it's a little bit tricky to compile because it's strongly dependant of go-yara and CGO. Here's a little step by step guide: 
 
 ## Before installation
 
