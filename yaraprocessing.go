@@ -13,41 +13,38 @@ import (
 )
 
 // PerformYaraScan use provided YARA rules and search for match in the given byte slice
-func PerformYaraScan(data *[]byte, rules *yara.Rules) yara.MatchRules {
+func PerformYaraScan(data *[]byte, rules *yara.Rules) (yara.MatchRules, error) {
 	result, err := yaraScan(*data, rules)
 	if err != nil {
-		LogMessage(LOG_ERROR, "[ERROR]", err)
+		return nil, err
 	}
 
-	return result
+	return result, nil
 }
 
 // PerformArchiveYaraScan try to decompress archive and YARA scan every file in it
-func PerformArchiveYaraScan(path string, rules *yara.Rules) (matchs yara.MatchRules) {
+func PerformArchiveYaraScan(path string, rules *yara.Rules) (matchs yara.MatchRules, err error) {
 	var buffer [][]byte
 
 	a, err := unarr.NewArchive(path)
 	if err != nil {
-		LogMessage(LOG_ERROR, "[ERROR]", err)
-		return matchs
+		return nil, err
 	}
 	defer a.Close()
 
 	list, err := a.List()
 	if err != nil {
-		LogMessage(LOG_ERROR, "[ERROR]", err)
-		return matchs
+		return nil, err
 	}
 	for _, f := range list {
 		err := a.EntryFor(f)
 		if err != nil {
-			return matchs
+			return nil, err
 		}
 
 		data, err := a.ReadAll()
 		if err != nil {
-			LogMessage(LOG_ERROR, "[ERROR]", err)
-			return matchs
+			return nil, err
 		}
 
 		buffer = append(buffer, data)
@@ -55,10 +52,10 @@ func PerformArchiveYaraScan(path string, rules *yara.Rules) (matchs yara.MatchRu
 
 	matchs, err = yaraScan(bytes.Join(buffer, []byte{}), rules)
 	if err != nil {
-		return matchs
+		return nil, err
 	}
 
-	return matchs
+	return matchs, nil
 }
 
 // LoadYaraRules compile yara rules from specified paths and return a pointer to the yara compiler
@@ -109,34 +106,45 @@ func FileAnalyzeYaraMatch(path string, rules *yara.Rules) bool {
 
 	if _, err = os.Stat(path); err != nil {
 		LogMessage(LOG_ERROR, "[ERROR]", path, err)
-	} else {
-		// read file content
-		content, err = os.ReadFile(path)
+		return false
+	}
+
+	// read file content
+	content, err = os.ReadFile(path)
+	if err != nil {
+		LogMessage(LOG_ERROR, "[ERROR]", path, err)
+		return false
+	}
+
+	filetype, err := filetype.Match(content)
+	if err != nil {
+		LogMessage(LOG_ERROR, "[ERROR]", path, err)
+		return false
+	}
+
+	// cleaning memory if file size is greater than 512Mb
+	if len(content) > 1024*1024*512 {
+		defer debug.FreeOSMemory()
+	}
+
+	// cancel analysis if file size is greater than 2Gb
+	if len(content) > 1024*1024*2048 {
+		LogMessage(LOG_ERROR, "File size is greater than 2Gb, skipping", path)
+		return false
+	}
+
+	// archive or other file format scan
+	if Contains([]string{"application/x-tar", "application/x-7z-compressed", "application/zip", "application/vnd.rar"}, filetype.MIME.Value) {
+		result, err = PerformArchiveYaraScan(path, rules)
 		if err != nil {
-			LogMessage(LOG_ERROR, "[ERROR]", path, err)
-		}
-
-		filetype, err := filetype.Match(content)
-		if err != nil {
-			LogMessage(LOG_ERROR, "[ERROR]", path, err)
-		}
-
-		// cleaning memory if file size is greater than 512Mb
-		if len(content) > 1024*1024*512 {
-			defer debug.FreeOSMemory()
-		}
-
-		// cancel analysis if file size is greater than 2Gb
-		if len(content) > 1024*1024*2048 {
-			LogMessage(LOG_ERROR, "File size is greater than 2Gb, skipping", path)
+			LogMessage(LOG_ERROR, "[ERROR]", "Error performing yara scan on", path, err)
 			return false
 		}
-
-		// archive or other file format scan
-		if Contains([]string{"application/x-tar", "application/x-7z-compressed", "application/zip", "application/vnd.rar"}, filetype.MIME.Value) {
-			result = PerformArchiveYaraScan(path, rules)
-		} else {
-			result = PerformYaraScan(&content, rules)
+	} else {
+		result, err = PerformYaraScan(&content, rules)
+		if err != nil {
+			LogMessage(LOG_ERROR, "[ERROR]", "Error performing yara scan on", path, err)
+			return false
 		}
 	}
 

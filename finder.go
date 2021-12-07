@@ -14,9 +14,11 @@ import (
 
 // PathsFinder try to match regular expressions in file paths slice
 func PathsFinder(files *[]string, patterns []*regexp2.Regexp) *[]string {
+	InitProgressbar(int64(len(*files)))
 	var matchingFiles []string
 	for _, expression := range patterns {
 		for _, f := range *files {
+			ProgressBarStep()
 			if match, _ := expression.MatchString(f); match {
 				matchingFiles = append(matchingFiles, f)
 			}
@@ -29,7 +31,9 @@ func PathsFinder(files *[]string, patterns []*regexp2.Regexp) *[]string {
 // FindInFiles check for pattern or checksum match in files slice
 func FindInFiles(files *[]string, patterns []string, checksum []string) *[]string {
 	var matchingFiles []string
+	InitProgressbar(int64(len(*files)))
 	for _, f := range *files {
+		ProgressBarStep()
 		b, err := ioutil.ReadFile(f)
 		if err != nil {
 			LogMessage(LOG_ERROR, "[ERROR]", "Unable to read file", f)

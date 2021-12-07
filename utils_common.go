@@ -44,7 +44,7 @@ func GetEnvironmentVariables() (environmentVariables []Env) {
 }
 
 // ListFilesRecursively returns a list of files in the specified path and its subdirectories
-func ListFilesRecursively(path string) *[]string {
+func ListFilesRecursively(path string, excludedPaths []string) *[]string {
 	var files []string
 
 	err := filepath.Walk(path, func(path string, f os.FileInfo, err error) error {
@@ -54,6 +54,13 @@ func ListFilesRecursively(path string) *[]string {
 		}
 
 		if !f.IsDir() {
+			for _, excludedPath := range excludedPaths {
+				if len(excludedPath) > 1 && strings.HasPrefix(path, excludedPath) && len(path) > len(excludedPath) {
+					LogMessage(LOG_INFO, "[INFO]", "Skipping dir", path)
+					return filepath.SkipDir
+				}
+			}
+
 			files = append(files, path)
 		}
 		return nil

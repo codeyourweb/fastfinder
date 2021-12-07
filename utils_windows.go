@@ -9,6 +9,8 @@ import (
 	"golang.org/x/sys/windows"
 )
 
+const LineBreak = "\r\n"
+
 var (
 	modKernel32          = windows.NewLazySystemDLL("kernel32.dll")
 	modUser32            = windows.NewLazySystemDLL("user32.dll")
@@ -46,20 +48,20 @@ func CreateMutex(name string) (uintptr, error) {
 }
 
 // EnumLogicalDrives returns a list of all logical drives letters on the system.
-func EnumLogicalDrives() (drivesInfo []DriveInfo) {
+func EnumLogicalDrives() (drivesInfo []DriveInfo, excludedPaths []string) {
 	var drives []string
 	if ret, _, callErr := procGetLogicalDrives.Call(); callErr != windows.ERROR_SUCCESS {
-		return []DriveInfo{}
+		return []DriveInfo{}, []string{}
 	} else {
 		drives = bitsToDrives(uint32(ret))
 	}
 
 	for _, drive := range drives {
 		var driveInfo DriveInfo
-		driveInfo.Name = drive
+		driveInfo.Name = drive + ":\\"
 		drivePtr, err := syscall.UTF16PtrFromString(drive + ":")
 		if err != nil {
-			return drivesInfo
+			return drivesInfo, []string{}
 		}
 
 		if ret, _, callErr := procGetDriveTypeW.Call(uintptr(unsafe.Pointer(drivePtr))); callErr != windows.ERROR_SUCCESS {
@@ -71,7 +73,7 @@ func EnumLogicalDrives() (drivesInfo []DriveInfo) {
 		drivesInfo = append(drivesInfo, driveInfo)
 	}
 
-	return drivesInfo
+	return drivesInfo, []string{}
 }
 
 // map drive DWORD returned by EnumLogicalDrives to drive letters
