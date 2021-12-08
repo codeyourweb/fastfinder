@@ -14,7 +14,7 @@ focused on enpoint enumeration and suspicious file finding based on various crit
 ### Installation 
 Compiled release of this software are available. If you want to compile 
 from sources, it could be a little bit tricky because it strongly depends of 
-_go-yara_ and CGO compilation. Anyway, you'll find a detailed documentation [for windows](README.windows-compilation.md) and for [for linux](README.linux-compilation.md)
+_go-yara_ and CGO compilation. Anyway, you'll find a detailed documentation [for windows](README.windows-compilation.md) and [for linux](README.linux-compilation.md)
 
 ### Usage 
 ```
