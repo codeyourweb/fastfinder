@@ -43,7 +43,7 @@ func main() {
 
 	// version
 	if *pFinderVersion {
-		fmt.Println("fastfinder v1.4")
+		fmt.Println("fastfinder v1.4.1")
 		if !Contains(os.Args, "-c") && !Contains(os.Args, "--configuration") {
 			os.Exit(0)
 		}
@@ -247,13 +247,21 @@ func main() {
 			}
 		}
 
-		// copy matching files
-		if len(*matchContent) > 0 && config.Output.CopyMatchingFiles {
-			LogMessage(LOG_INFO, "[INFO]", "Copy all matching files")
-			InitProgressbar(int64(len(*matchPattern)))
-			for _, f := range *matchContent {
-				ProgressBarStep()
-				FileCopy(f, config.Output.FilesCopyPath, config.Output.Base64Files)
+		// listing and copy matching files
+		LogMessage(LOG_INFO, "[INFO]", "scan finished in", basePath)
+		if len(*matchContent) > 0 {
+			LogMessage(LOG_INFO, "[INFO]", "Matching files: ")
+			for _, p := range *matchContent {
+				LogMessage(LOG_INFO, "  |", p)
+			}
+
+			if config.Output.CopyMatchingFiles {
+				LogMessage(LOG_INFO, "[INFO]", "Copy all matching files")
+				InitProgressbar(int64(len(*matchPattern)))
+				for _, f := range *matchContent {
+					ProgressBarStep()
+					FileCopy(f, config.Output.FilesCopyPath, config.Output.Base64Files)
+				}
 			}
 		} else {
 			LogMessage(LOG_INFO, "[INFO]", "No match found")
