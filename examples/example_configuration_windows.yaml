@@ -16,10 +16,11 @@ input:
          - 'A4AF9EF6E345B3B4EA50DDE672A986C14F9A195E407EBAC36B1652AACC10E3EE'
 options:
     contentMatchDependsOnPathMatch: false
-    findInHardDrives: true
+    findInHardDrives: false
     findInRemovableDrives: false
-    findInNetworkDrives: false
+    findInNetworkDrives: true
     findInCDRomDrives: false
 output:
+    copyMatchingFiles: true
     base64Files: true
     filesCopyPath: ''

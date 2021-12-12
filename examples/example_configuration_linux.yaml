@@ -15,5 +15,6 @@ options:
     findInNetworkDrives: false
     findInCDRomDrives: false
 output:
+    copyMatchingFiles: true
     base64Files: true
     filesCopyPath: ''

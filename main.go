@@ -248,7 +248,7 @@ func main() {
 		}
 
 		// copy matching files
-		if len(*matchContent) > 0 {
+		if len(*matchContent) > 0 && config.Output.CopyMatchingFiles {
 			LogMessage(LOG_INFO, "[INFO]", "Copy all matching files")
 			InitProgressbar(int64(len(*matchPattern)))
 			for _, f := range *matchContent {

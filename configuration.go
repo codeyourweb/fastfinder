@@ -35,8 +35,9 @@ type Options struct {
 }
 
 type Output struct {
-	Base64Files   bool   `yaml:"base64Files"`
-	FilesCopyPath string `yaml:"filesCopyPath"`
+	Base64Files       bool   `yaml:"base64Files"`
+	FilesCopyPath     string `yaml:"filesCopyPath"`
+	CopyMatchingFiles bool   `yaml:"copyMatchingFiles"`
 }
 
 func (c *Configuration) getConfiguration(configFile string) *Configuration {

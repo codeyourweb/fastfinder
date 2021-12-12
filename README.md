@@ -53,6 +53,7 @@ options:
     findInNetworkDrives: true # enumerate network drive content
     findInCDRomDrives: true # enumerate physical CD-ROM and mounted iso / vhd...
 output:
+    copyMatchingFiles: true # create a copy of every matching file
     base64Files: true # base64 matched content before copy
     filesCopyPath: '' # empty value will copy matched files in the fastfinder.exe folder
 ``` 
