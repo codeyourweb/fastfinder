@@ -3,9 +3,12 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"strings"
 
 	"github.com/gen2brain/go-unarr"
 	"github.com/h2non/filetype"
@@ -66,9 +69,26 @@ func LoadYaraRules(path []string) (compiler *yara.Compiler, err error) {
 	}
 
 	for _, dir := range path {
-		f, err := os.ReadFile(dir)
-		if err != nil {
-			LogMessage(LOG_ERROR, "[ERROR]", "Could not read rule file ", dir, err)
+		var f []byte
+		var err error
+
+		dir = strings.TrimSpace(dir)
+
+		if IsValidUrl(dir) {
+			response, err := http.Get(dir)
+			if err != nil {
+				LogMessage(LOG_ERROR, "YARA file URL unreachable", dir, err)
+			}
+			f, err = ioutil.ReadAll(response.Body)
+			if err != nil {
+				LogMessage(LOG_ERROR, "YARA file URL content unreadable", dir, err)
+			}
+			response.Body.Close()
+		} else {
+			f, err = os.ReadFile(dir)
+			if err != nil {
+				LogMessage(LOG_ERROR, "[ERROR]", "Could not read rule file ", dir, err)
+			}
 		}
 
 		namespace := filepath.Base(dir)[:len(filepath.Base(dir))-4]
