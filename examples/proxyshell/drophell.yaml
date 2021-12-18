@@ -1,5 +1,9 @@
 # Proxyshell exploitation - DropHell malware
-# reference
+# search for:
+#   - *.exe or *.aspx in a "ZING" directory or subdirectory
+#   - OR aspx webshell in Page_Load function
+#   - OR any of the specified sha256 hash
+# reference:
 #   - https://twitter.com/DeepInstinctSec/status/1450129546125131780
 #   - https://www.deepinstinct.com/blog/do-not-exchange-it-has-a-shell-inside
 #   - https://www.huntress.com/blog/rapid-response-microsoft-exchange-servers-still-vulnerable-to-proxyshell-exploit
