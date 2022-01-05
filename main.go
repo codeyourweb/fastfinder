@@ -211,23 +211,27 @@ func main() {
 
 		// match content - yara
 		if len(config.Input.Content.Yara) > 0 {
-			LogMessage(LOG_INFO, "[INFO]", "Checking for yara matchs in", basePath)
-			if config.Options.ContentMatchDependsOnPathMatch {
-				InitProgressbar(int64(len(*matchPattern)))
-				for _, file := range *matchPattern {
-					ProgressBarStep()
-					if FileAnalyzeYaraMatch(file, rules) && !Contains(*matchContent, file) {
-						LogMessage(LOG_INFO, "[ALERT]", "File match on", file)
-						*matchContent = append(*matchContent, file)
+			if ((len(*matchPattern) == 0 && config.Options.ContentMatchDependsOnPathMatch) || (len(*files) == 0 && !config.Options.ContentMatchDependsOnPathMatch)){
+				LogMessage(LOG_INFO, "[INFO]", "Neither path nor pattern match. no file to scan with YARA.", basePath)
+			}else{
+				LogMessage(LOG_INFO, "[INFO]", "Checking for yara matchs in", basePath)
+				if config.Options.ContentMatchDependsOnPathMatch {
+					InitProgressbar(int64(len(*matchPattern)))
+					for _, file := range *matchPattern {
+						ProgressBarStep()
+						if FileAnalyzeYaraMatch(file, rules) && !Contains(*matchContent, file) {
+							LogMessage(LOG_INFO, "[ALERT]", "File match on", file)
+							*matchContent = append(*matchContent, file)
+						}
 					}
-				}
-			} else {
-				InitProgressbar(int64(len(*files)))
-				for _, file := range *files {
-					ProgressBarStep()
-					if FileAnalyzeYaraMatch(file, rules) && !Contains(*matchContent, file) {
-						LogMessage(LOG_INFO, "[ALERT]", "File match on", file)
-						*matchContent = append(*matchContent, file)
+				} else {
+					InitProgressbar(int64(len(*files)))
+					for _, file := range *files {
+						ProgressBarStep()
+						if FileAnalyzeYaraMatch(file, rules) && !Contains(*matchContent, file) {
+							LogMessage(LOG_INFO, "[ALERT]", "File match on", file)
+							*matchContent = append(*matchContent, file)
+						}
 					}
 				}
 			}
