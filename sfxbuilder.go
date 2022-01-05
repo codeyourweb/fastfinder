@@ -5,7 +5,9 @@ import (
 	"bytes"
 	_ "embed"
 	"io"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 
@@ -56,13 +58,31 @@ func fastfinderResourcesCompress(configuration Configuration, logFileLocation st
 
 	// embed yara rules
 	for i := 0; i < len(configuration.Input.Content.Yara); i++ {
-		fileName := filepath.Base(configuration.Input.Content.Yara[i])
-		zipFile, err := archive.Create("fastfinder_resources/" + fileName)
-		if err != nil {
-			log.Fatal("[ERROR] ", err)
+		var fileName string
+		var fsFile []byte
+
+		if IsValidUrl(configuration.Input.Content.Yara[i]) {
+			response, err := http.Get(configuration.Input.Content.Yara[i])
+			if err != nil {
+				LogMessage(LOG_ERROR, "YARA file URL unreachable", configuration.Input.Content.Yara[i], err)
+			}
+			fsFile, err = ioutil.ReadAll(response.Body)
+			if err != nil {
+				LogMessage(LOG_ERROR, "YARA file URL content unreadable", configuration.Input.Content.Yara[i], err)
+			}
+			response.Body.Close()
+			fileName = filepath.Base(configuration.Input.Content.Yara[i])[:len(filepath.Base(configuration.Input.Content.Yara[i]))-4]
+
+		} else {
+			fileName = filepath.Base(configuration.Input.Content.Yara[i])
+			fsFile, err = os.ReadFile(configuration.Input.Content.Yara[i])
+
+			if err != nil {
+				log.Fatal("[ERROR] ", err)
+			}
 		}
 
-		fsFile, err := os.ReadFile(configuration.Input.Content.Yara[i])
+		zipFile, err := archive.Create("fastfinder_resources/" + fileName)
 		if err != nil {
 			log.Fatal("[ERROR] ", err)
 		}
@@ -74,6 +94,7 @@ func fastfinderResourcesCompress(configuration Configuration, logFileLocation st
 		}
 
 		configuration.Input.Content.Yara[i] = "./fastfinder_resources/" + fileName
+
 	}
 
 	// embed configuration file

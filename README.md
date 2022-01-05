@@ -5,7 +5,7 @@
 
 ## What is this project designed for?
 _FastFinder_ is a lightweight tool made for threat hunting, live forensics and triage on both Windows and Linux Platforms. It is 
-focused on enpoint enumeration and suspicious file finding based on various criterias:
+focused on endpoint enumeration and suspicious file finding based on various criterias:
 * file path / name
 * md5 / sha1 / sha256 checksum
 * simple string content match
@@ -58,12 +58,13 @@ output:
     filesCopyPath: '' # empty value will copy matched files in the fastfinder.exe folder
 ``` 
 ### Note for input path:
-* '?' for simple char and '\\*' for multiple chars wildcards are available for simple string
-* environment variables are also available
+* '?' for simple char  and '\\*' (eg. powershe??.exe)  for multiple chars (eg. \\*.exe) wildcards are available for simple string
+* environment variables are also available (eg. %TEMP%\\\*.exe)
 * regular expression are allowed , they should be enclosed by /<regex>/
 * input path are always case INSENSITIVE
 * input content grep strings are always case SENSITIVE
-* backslashes haven't to be escaped on simple string pattern (see example) 
+* backslashes haven't to be escaped on simple string pattern
+For more informations, take a look at the [examples](./examples)
 
 ## About this project
 I initially created this project to automate the creation of fastfind on a wide computer network. 

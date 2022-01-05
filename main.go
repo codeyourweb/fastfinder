@@ -60,12 +60,12 @@ func main() {
 	}
 
 	// window hidden
-	if *pHideWindow {
+	if *pHideWindow && len(*pSfxPath) == 0 {
 		HideConsoleWindow()
 	}
 
 	// init file logging
-	if len(*pOutLogPath) > 0 {
+	if len(*pOutLogPath) > 0 && len(*pSfxPath) == 0 {
 		StdoutToLogFile(*pOutLogPath)
 		StderrToLogFile(*pOutLogPath)
 	}
