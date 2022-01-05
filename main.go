@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/akamensky/argparse"
 	"github.com/dlclark/regexp2"
@@ -21,7 +22,6 @@ func main() {
 	var compiler *yara.Compiler
 	var rules *yara.Rules
 	var err error
-
 
 	// parse configuration file
 	parser := argparse.NewParser("fastfinder", "Incident Response - Fast suspicious file finder")
@@ -46,11 +46,18 @@ func main() {
 	}
 
 	// create mutex
-	if len(*pSfxPath) == 0{
+	if len(*pSfxPath) == 0 {
 		if _, err = CreateMutex("fastfinder"); err != nil {
 			LogMessage(LOG_ERROR, "[ERROR]", "Only one instance or fastfinder can be launched:", err.Error())
 			os.Exit(1)
 		}
+	}
+
+	// Retrieve current user permissions
+	admin, elevated := CheckCurrentUserPermissions()
+	if !admin && !elevated {
+		LogMessage(LOG_INFO, "[WARNING] fastfinder is not running with fully elevated righs. Notice that the analysis will be partial and limited to the current user scope")
+		time.Sleep(5 * time.Second)
 	}
 
 	// progressbar
@@ -215,15 +222,15 @@ func main() {
 
 		// match content - yara
 		if len(config.Input.Content.Yara) > 0 {
-			if ((len(*matchPattern) == 0 && config.Options.ContentMatchDependsOnPathMatch) || (len(*files) == 0 && !config.Options.ContentMatchDependsOnPathMatch)){
+			if (len(*matchPattern) == 0 && config.Options.ContentMatchDependsOnPathMatch) || (len(*files) == 0 && !config.Options.ContentMatchDependsOnPathMatch) {
 				LogMessage(LOG_INFO, "[INFO]", "Neither path nor pattern match. no file to scan with YARA.", basePath)
-			}else{
+			} else {
 				LogMessage(LOG_INFO, "[INFO]", "Checking for yara matchs in", basePath)
 				if config.Options.ContentMatchDependsOnPathMatch {
 					InitProgressbar(int64(len(*matchPattern)))
 					for _, file := range *matchPattern {
 						ProgressBarStep()
-						if (FileAnalyzeYaraMatch(file, rules) && (len(*matchContent) == 0 || !Contains(*matchContent, file))) {
+						if FileAnalyzeYaraMatch(file, rules) && (len(*matchContent) == 0 || !Contains(*matchContent, file)) {
 							LogMessage(LOG_INFO, "[ALERT]", "File match on", file)
 							*matchContent = append(*matchContent, file)
 						}
@@ -232,7 +239,7 @@ func main() {
 					InitProgressbar(int64(len(*files)))
 					for _, file := range *files {
 						ProgressBarStep()
-						if (FileAnalyzeYaraMatch(file, rules) && (len(*matchContent) == 0 || !Contains(*matchContent, file))) {
+						if FileAnalyzeYaraMatch(file, rules) && (len(*matchContent) == 0 || !Contains(*matchContent, file)) {
 							LogMessage(LOG_INFO, "[ALERT]", "File match on", file)
 							*matchContent = append(*matchContent, file)
 						}

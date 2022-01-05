@@ -48,6 +48,23 @@ func (c *cmdRunner) Run(cmd string, args []string) (io.Reader, error) {
 	}
 }
 
+// CheckCurrentUserPermissions retieves the current user permissions and check if the program run with elevated privileges
+func CheckCurrentUserPermissions() (admin bool, elevated bool) {
+	cmd := exec.Command("id", "-u")
+	output, err := cmd.Output()
+
+	if err != nil {
+		log.Fatalf("[ERROR] Error finding current user privileges: %s", err)
+	}
+
+	i, err := strconv.Atoi(string(output[:len(output)-1]))
+	if err != nil {
+		log.Fatalf("[ERROR] Error finding current user privileges: %s", err)
+	}
+
+	return i == 0, i == 0
+}
+
 // HideConsoleWindow hide the process console window
 func HideConsoleWindow() {
 	LogMessage(LOG_INFO, "[COMPAT]", "Hide console option not implented on linux. You should consider run this program as a task")
