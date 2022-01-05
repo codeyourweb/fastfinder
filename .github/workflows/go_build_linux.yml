@@ -29,7 +29,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: Building Fastfinder
         run: |
-           go build -tags yara_static -a -ldflags '-s -w -extldflags "-static"' .
+           go build -trimpath -tags yara_static -a -ldflags '-s -w -extldflags "-static"' .
            ls
            sudo chmod +x fastfinder
            sudo ./fastfinder -h
