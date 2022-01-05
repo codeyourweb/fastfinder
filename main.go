@@ -223,7 +223,7 @@ func main() {
 					InitProgressbar(int64(len(*matchPattern)))
 					for _, file := range *matchPattern {
 						ProgressBarStep()
-						if FileAnalyzeYaraMatch(file, rules) && !Contains(*matchContent, file) {
+						if (FileAnalyzeYaraMatch(file, rules) && (len(*matchContent) == 0 || !Contains(*matchContent, file))) {
 							LogMessage(LOG_INFO, "[ALERT]", "File match on", file)
 							*matchContent = append(*matchContent, file)
 						}
@@ -232,7 +232,7 @@ func main() {
 					InitProgressbar(int64(len(*files)))
 					for _, file := range *files {
 						ProgressBarStep()
-						if FileAnalyzeYaraMatch(file, rules) && !Contains(*matchContent, file) {
+						if (FileAnalyzeYaraMatch(file, rules) && (len(*matchContent) == 0 || !Contains(*matchContent, file))) {
 							LogMessage(LOG_INFO, "[ALERT]", "File match on", file)
 							*matchContent = append(*matchContent, file)
 						}
