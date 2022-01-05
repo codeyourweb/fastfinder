@@ -22,10 +22,6 @@ func main() {
 	var rules *yara.Rules
 	var err error
 
-	if _, err = CreateMutex("fastfinder"); err != nil {
-		LogMessage(LOG_ERROR, "[ERROR]", "Only one instance or fastfinder can be launched:", err.Error())
-		os.Exit(1)
-	}
 
 	// parse configuration file
 	parser := argparse.NewParser("fastfinder", "Incident Response - Fast suspicious file finder")
@@ -46,6 +42,14 @@ func main() {
 		fmt.Println("fastfinder v1.4.2b")
 		if !Contains(os.Args, "-c") && !Contains(os.Args, "--configuration") {
 			os.Exit(0)
+		}
+	}
+
+	// create mutex
+	if len(*pSfxPath) == 0{
+		if _, err = CreateMutex("fastfinder"); err != nil {
+			LogMessage(LOG_ERROR, "[ERROR]", "Only one instance or fastfinder can be launched:", err.Error())
+			os.Exit(1)
 		}
 	}
 
