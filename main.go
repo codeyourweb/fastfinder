@@ -1,7 +1,9 @@
 // #cgo !yara_no_pkg_config,!yara_static  pkg-config: yara
 // #cgo !yara_no_pkg_config,yara_static   pkg-config: --static yara
 // #cgo yara_no_pkg_config                LDFLAGS:    -lyara
-// compile: go build -tags yara_static -a -ldflags '-s -w -extldflags "-static"' .
+// compile: go build -trimpath -tags yara_static -a -ldflags '-s -w -extldflags "-static"' .
+// suggestion: reduce binary size with upx --best --lzma .\fastfinder.exe
+
 package main
 
 import (
@@ -19,7 +21,7 @@ import (
 )
 
 func main() {
-	const FASTFINDER_VERSION = "1.4.2b"
+	const FASTFINDER_VERSION = "1.4.2"
 	const YARA_VERSION = "4.1.3"
 	var compiler *yara.Compiler
 	var rules *yara.Rules
@@ -49,19 +51,21 @@ func main() {
 		}
 	}
 
-	// create mutex
 	if len(*pSfxPath) == 0 {
+		// create mutex
 		if _, err = CreateMutex("fastfinder"); err != nil {
 			LogMessage(LOG_ERROR, "[ERROR]", "Only one instance or fastfinder can be launched:", err.Error())
 			os.Exit(1)
 		}
-	}
 
-	// Retrieve current user permissions
-	admin, elevated := CheckCurrentUserPermissions()
-	if !admin && !elevated {
-		LogMessage(LOG_INFO, "[WARNING] fastfinder is not running with fully elevated righs. Notice that the analysis will be partial and limited to the current user scope")
-		time.Sleep(3 * time.Second)
+		// Retrieve current user permissions
+		admin, elevated := CheckCurrentUserPermissions()
+		if !admin && !elevated {
+			LogMessage(LOG_INFO, "[WARNING] fastfinder is not running with fully elevated righs. Notice that the analysis will be partial and limited to the current user scope")
+			if !*pHideWindow {
+				time.Sleep(3 * time.Second)
+			}
+		}
 	}
 
 	// progressbar

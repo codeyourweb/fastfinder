@@ -1,12 +1,3 @@
-```                                              
-  ___       __  ___  ___         __   ___  __
- |__   /\  /__`  |  |__  | |\ | |  \ |__  |__)
- |    /~~\ .__/  |  |    | | \| |__/ |___ |  \
-
-  2021-2022 | Jean-Pierre GARNIER | @codeyourweb
-  https://github.com/codeyourweb/fastfinder    
-```         
-
 # _FastFinder_ - Incident Response - Fast suspicious file finder
 [![Golang](https://img.shields.io/badge/Go-1.17-blue.svg)](https://golang.org) ![Linux](https://img.shields.io/badge/Supports-Linux-green.svg) ![windows](https://img.shields.io/badge/Supports-windows-green.svg)
 ![build windows workflow](https://github.com/codeyourweb/fastfinder/actions/workflows/go_build_windows.yml/badge.svg) ![build windows workflow](https://github.com/codeyourweb/fastfinder/actions/workflows/go_build_linux.yml/badge.svg)
@@ -26,6 +17,13 @@ _go-yara_ and CGO compilation. Anyway, you'll find a detailed documentation [for
 
 ### Usage 
 ```
+  ___       __  ___  ___         __   ___  __
+ |__   /\  /__`  |  |__  | |\ | |  \ |__  |__)
+ |    /~~\ .__/  |  |    | | \| |__/ |___ |  \
+
+  2021-2022 | Jean-Pierre GARNIER | @codeyourweb
+  https://github.com/codeyourweb/fastfinder  
+
 usage: fastfinder [-h|--help] [-c|--configuration "configuration.yaml"] [-b|--build
                   "path_to_package_bin"] [-o|--output "log_file.log"] [-n|--nowindow]
                   [-p|--showprogress] [-v|--version]
