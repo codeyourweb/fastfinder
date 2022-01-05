@@ -31,13 +31,21 @@ func PerformArchiveYaraScan(path string, rules *yara.Rules) (matchs yara.MatchRu
 
 	a, err := unarr.NewArchive(path)
 	if err != nil {
-		return nil, err
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+		return PerformYaraScan(&content, rules)
 	}
 	defer a.Close()
 
 	list, err := a.List()
 	if err != nil {
-		return nil, err
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+		return PerformYaraScan(&content, rules)
 	}
 	for _, f := range list {
 		err := a.EntryFor(f)
@@ -166,6 +174,14 @@ func FileAnalyzeYaraMatch(path string, rules *yara.Rules) bool {
 			LogMessage(LOG_ERROR, "[ERROR]", "Error performing yara scan on", path, err)
 			return false
 		}
+	}
+
+	// output rules matchs
+	for _, match := range result {
+		LogMessage(LOG_INFO, "[ALERT]", "YARA match:")
+		LogMessage(LOG_INFO, " | path:", path)
+		LogMessage(LOG_INFO, " | rule namespace:", match.Namespace)
+		LogMessage(LOG_INFO, " | rule name:", match.Rule)
 	}
 
 	return len(result) > 0

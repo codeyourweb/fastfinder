@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/base64"
+	"fmt"
 	"io"
 	"log"
 	"net/url"
@@ -29,6 +30,18 @@ const (
 	DRIVE_CDROM       = 5
 	DRIVE_RAMDISK     = 6
 )
+
+// PrintFastfinderLogo is a (useless) function displaying fastfinder logo as ascii art
+func PrintFastfinderLogo() {
+	fmt.Println("==================================================")
+	fmt.Println("  ___       __  ___  ___         __   ___  __     ")
+	fmt.Println(" |__   /\\  /__`  |  |__  | |\\ | |  \\ |__  |__) ")
+	fmt.Println(" |    /~~\\ .__/  |  |    | | \\| |__/ |___ |  \\ ")
+	fmt.Println("                                                  ")
+	fmt.Println("  2021-2022 | Jean-Pierre GARNIER | @codeyourweb  ")
+	fmt.Println("  https://github.com/codeyourweb/fastfinder       ")
+	fmt.Println("==================================================")
+}
 
 // GetEnvironmentVariables return a list of environment variables in []Env slice
 func GetEnvironmentVariables() (environmentVariables []Env) {

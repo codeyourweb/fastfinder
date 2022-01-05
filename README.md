@@ -1,7 +1,15 @@
+```                                              
+  ___       __  ___  ___         __   ___  __
+ |__   /\  /__`  |  |__  | |\ | |  \ |__  |__)
+ |    /~~\ .__/  |  |    | | \| |__/ |___ |  \
+
+  2021-2022 | Jean-Pierre GARNIER | @codeyourweb
+  https://github.com/codeyourweb/fastfinder    
+```         
+
 # _FastFinder_ - Incident Response - Fast suspicious file finder
-[![Golang](https://img.shields.io/badge/Go-1.17-blue.svg)](https://golang.org)
-![Linux](https://img.shields.io/badge/Supports-Linux-green.svg)
-![windows](https://img.shields.io/badge/Supports-windows-green.svg)
+[![Golang](https://img.shields.io/badge/Go-1.17-blue.svg)](https://golang.org) ![Linux](https://img.shields.io/badge/Supports-Linux-green.svg) ![windows](https://img.shields.io/badge/Supports-windows-green.svg)
+![build windows workflow](https://github.com/codeyourweb/fastfinder/actions/workflows/go_build_windows.yml/badge.svg) ![build windows workflow](https://github.com/codeyourweb/fastfinder/actions/workflows/go_build_linux.yml/badge.svg)
 
 ## What is this project designed for?
 _FastFinder_ is a lightweight tool made for threat hunting, live forensics and triage on both Windows and Linux Platforms. It is 

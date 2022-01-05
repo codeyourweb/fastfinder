@@ -19,9 +19,13 @@ import (
 )
 
 func main() {
+	const FASTFINDER_VERSION = "1.4.2b"
+	const YARA_VERSION = "4.1.3"
 	var compiler *yara.Compiler
 	var rules *yara.Rules
 	var err error
+
+	PrintFastfinderLogo()
 
 	// parse configuration file
 	parser := argparse.NewParser("fastfinder", "Incident Response - Fast suspicious file finder")
@@ -39,7 +43,7 @@ func main() {
 
 	// version
 	if *pFinderVersion {
-		fmt.Println("fastfinder v1.4.2b")
+		fmt.Println("fastfinder v" + FASTFINDER_VERSION + " with embedded YARA v" + YARA_VERSION)
 		if !Contains(os.Args, "-c") && !Contains(os.Args, "--configuration") {
 			os.Exit(0)
 		}
@@ -57,7 +61,7 @@ func main() {
 	admin, elevated := CheckCurrentUserPermissions()
 	if !admin && !elevated {
 		LogMessage(LOG_INFO, "[WARNING] fastfinder is not running with fully elevated righs. Notice that the analysis will be partial and limited to the current user scope")
-		time.Sleep(5 * time.Second)
+		time.Sleep(3 * time.Second)
 	}
 
 	// progressbar
@@ -111,6 +115,11 @@ func main() {
 		if err != nil {
 			LogMessage(LOG_ERROR, err)
 			os.Exit(1)
+		}
+
+		LogMessage(LOG_INFO, "[INIT]", len(rules.GetRules()), "YARA rules compiled")
+		for _, r := range rules.GetRules() {
+			LogMessage(LOG_INFO, " | rule:", r.Identifier())
 		}
 	}
 
@@ -202,7 +211,7 @@ func main() {
 			matchPattern = PathsFinder(files, pathRegexPatterns)
 			if !config.Options.ContentMatchDependsOnPathMatch {
 				for _, file := range *matchPattern {
-					LogMessage(LOG_INFO, "[ALERT]", "File match on", file)
+					LogMessage(LOG_INFO, "[ALERT]", "File path match on:", file)
 				}
 			}
 
@@ -231,7 +240,6 @@ func main() {
 					for _, file := range *matchPattern {
 						ProgressBarStep()
 						if FileAnalyzeYaraMatch(file, rules) && (len(*matchContent) == 0 || !Contains(*matchContent, file)) {
-							LogMessage(LOG_INFO, "[ALERT]", "File match on", file)
 							*matchContent = append(*matchContent, file)
 						}
 					}
@@ -240,7 +248,6 @@ func main() {
 					for _, file := range *files {
 						ProgressBarStep()
 						if FileAnalyzeYaraMatch(file, rules) && (len(*matchContent) == 0 || !Contains(*matchContent, file)) {
-							LogMessage(LOG_INFO, "[ALERT]", "File match on", file)
 							*matchContent = append(*matchContent, file)
 						}
 					}
