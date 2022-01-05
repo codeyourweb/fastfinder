@@ -1,0 +1,51 @@
+name: fastfinder_build_windows
+
+on: [push, pull_request]
+
+jobs:
+  windows_standard-build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - name: Install MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MSYS
+          path-type: minimal
+          update: true
+          install: mingw-w64-x86_64-toolchain mingw-w64-x86_64-pkg-config base-devel openssl-devel autoconf automake libtool unzip
+      - name: Install YARA v4.1
+        run: |
+             wget -c https://github.com/VirusTotal/yara/archive/refs/tags/v4.1.3.zip -O /tmp/yara.zip
+             cd /tmp && unzip yara.zip
+             cd /tmp/yara-4.1.3
+             export PATH=${PATH}:/c/msys64/mingw64/bin:/c/msys64/mingw64/lib:/c/msys64/mingw64/lib/pkgconfig
+             ./bootstrap.sh
+             ./configure
+             make
+             make install
+             cp -r libyara/include/* /c/msys64/mingw64/include
+             cp -r libyara/.libs/* /c/msys64/mingw64/lib
+             cp libyara/yara.pc /c/msys64/mingw64/lib/pkgconfig
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+            go-version: 1.17
+      - uses: actions/checkout@v2
+      - name: Building Fastfinder
+        shell: powershell
+        run: |
+          $Env:PATH += ";C:/msys64/mingw64/include"
+          $Env:PATH += ";C:/msys64/mingw64/lib"
+          $Env:PATH += ";C:/msys64/mingw64/lib/pkgconfig"
+          $Env:GOOS="windows"
+          $Env:GOARCH="amd64"
+          $Env:CGO_CFLAGS="-IC:/msys64/mingw64/include"
+          $Env:CGO_LDFLAGS="-LC:/msys64/mingw64/lib -lyara -lcrypto"
+          $Env:PKG_CONFIG_PATH="C:/msys64/mingw64/lib/pkgconfig"
+          cd $Env:GITHUB_WORKSPACE
+          go build -tags yara_static -a -ldflags '-s -w -extldflags "-static"' .
+          ls
+          .\fastfinder.exe -h
