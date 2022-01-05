@@ -10,6 +10,10 @@ focused on endpoint enumeration and suspicious file finding based on various cri
 * simple string content match
 * complex content condition(s) based on YARA
 
+## Ready for battle!
+* fastfinder has been tested in real cases in multiple CERT, CSIRT and SOC
+* examples directory now include real malwares , suspect behaviors or vulnerability scan
+
 ### Installation 
 Compiled release of this software are available. If you want to compile 
 from sources, it could be a little bit tricky because it strongly depends of 
