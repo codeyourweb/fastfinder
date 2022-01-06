@@ -32,7 +32,7 @@ func PathsFinder(files *[]string, patterns []*regexp2.Regexp) *[]string {
 }
 
 // FindInFiles check for pattern or checksum match in files slice
-func FindInFiles(files *[]string, patterns []string, hashList []string) *[]string {
+func FindInFiles(files *[]string, patterns []string, hashList []string, maxScanFilesize int, cleanMemoryIfFileGreaterThanSize int) *[]string {
 	var matchingFiles []string
 	InitProgressbar(int64(len(*files)))
 	for _, path := range *files {

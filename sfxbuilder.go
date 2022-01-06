@@ -87,6 +87,11 @@ func fastfinderResourcesCompress(configuration Configuration, logFileLocation st
 			log.Fatal("[ERROR] ", err)
 		}
 
+		// cipher rules
+		if configuration.AdvancedParameters.YaraRC4Key != "" {
+			fsFile = RC4Cipher(fsFile, configuration.AdvancedParameters.YaraRC4Key)
+		}
+
 		r := bytes.NewReader(fsFile)
 		_, err = io.Copy(zipFile, r)
 		if err != nil {
@@ -106,6 +111,9 @@ func fastfinderResourcesCompress(configuration Configuration, logFileLocation st
 	if err != nil {
 		log.Fatal("[ERROR] ", err)
 	}
+
+	// cipher configuration file
+	d = RC4Cipher(d, BUILDER_RC4_KEY)
 
 	r = bytes.NewReader(d)
 	_, err = io.Copy(zipFile, r)

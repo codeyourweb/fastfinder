@@ -2,7 +2,7 @@
 // #cgo !yara_no_pkg_config,yara_static   pkg-config: --static yara
 // #cgo yara_no_pkg_config                LDFLAGS:    -lyara
 // compile: go build -trimpath -tags yara_static -a -ldflags '-s -w -extldflags "-static"' .
-// suggestion: reduce binary size with upx --best --lzma .\fastfinder.exe
+// suggestion: reduce binary size with "upx --best --lzma .\fastfinder.exe"
 
 package main
 
@@ -20,9 +20,11 @@ import (
 	"github.com/hillu/go-yara/v4"
 )
 
+const FASTFINDER_VERSION = "2.0.0b"
+const YARA_VERSION = "4.1.3"
+const BUILDER_RC4_KEY = ">Õ°ªKb{¡§ÌB$lMÕ±9l.tòÑé¦Ø¿"
+
 func main() {
-	const FASTFINDER_VERSION = "1.4.2"
-	const YARA_VERSION = "4.1.3"
 	var compiler *yara.Compiler
 	var rules *yara.Rules
 	var err error
@@ -48,23 +50,6 @@ func main() {
 		fmt.Println("fastfinder v" + FASTFINDER_VERSION + " with embedded YARA v" + YARA_VERSION)
 		if !Contains(os.Args, "-c") && !Contains(os.Args, "--configuration") {
 			os.Exit(0)
-		}
-	}
-
-	if len(*pSfxPath) == 0 {
-		// create mutex
-		if _, err = CreateMutex("fastfinder"); err != nil {
-			LogMessage(LOG_ERROR, "[ERROR]", "Only one instance or fastfinder can be launched:", err.Error())
-			os.Exit(1)
-		}
-
-		// Retrieve current user permissions
-		admin, elevated := CheckCurrentUserPermissions()
-		if !admin && !elevated {
-			LogMessage(LOG_INFO, "[WARNING] fastfinder is not running with fully elevated righs. Notice that the analysis will be partial and limited to the current user scope")
-			if !*pHideWindow {
-				time.Sleep(3 * time.Second)
-			}
 		}
 	}
 
@@ -102,14 +87,42 @@ func main() {
 			os.Exit(1)
 		}
 		BuildSFX(config, *pSfxPath, *pOutLogPath, *pHideWindow)
-		LogMessage(LOG_INFO, "[INFO]", "package generated successfully at", *pSfxPath)
+		LogMessage(LOG_INFO, "[INFO]", "Fastfinder package generated successfully at", *pSfxPath)
 		os.Exit(0)
+	}
+
+	// fastfinder init
+	LogMessage(LOG_INFO, "[INIT]", "Fastfinder v"+FASTFINDER_VERSION+" with embedded YARA v"+YARA_VERSION)
+	LogMessage(LOG_INFO, "[INIT]", "OS:", runtime.GOOS, "Arch:", runtime.GOARCH)
+	LogMessage(LOG_INFO, "[INIT]", "Hostname:", GetHostname())
+	LogMessage(LOG_INFO, "[INIT]", "User:", GetUsername())
+	LogMessage(LOG_INFO, "[INIT]", "Current directory:", GetCurrentDirectory())
+	LogMessage(LOG_INFO, "[INIT]", "Max file size scan:", fmt.Sprintf("%dMB", config.AdvancedParameters.MaxScanFilesize))
+	LogMessage(LOG_INFO, "[INIT]", "Config file:", *pConfigPath)
+	LogMessage(LOG_INFO, "[INIT]", "Fastfinder executable SHA256 checksum:", FileSHA256Sum(os.Args[0]))
+	LogMessage(LOG_INFO, "[INIT]", "Configuration file SHA256 checksum:", FileSHA256Sum(*pConfigPath))
+
+	if len(*pSfxPath) == 0 {
+		// create mutex
+		if _, err = CreateMutex("fastfinder"); err != nil {
+			LogMessage(LOG_ERROR, "[ERROR]", "Only one instance or fastfinder can be launched:", err.Error())
+			os.Exit(1)
+		}
+
+		// Retrieve current user permissions
+		admin, elevated := CheckCurrentUserPermissions()
+		if !admin && !elevated {
+			LogMessage(LOG_INFO, "[WARNING] fastfinder is not running with fully elevated righs. Notice that the analysis will be partial and limited to the current user scope")
+			if !*pHideWindow {
+				time.Sleep(3 * time.Second)
+			}
+		}
 	}
 
 	// if yara rules mentionned - compile them
 	if len(config.Input.Content.Yara) > 0 {
 		LogMessage(LOG_INFO, "[INIT]", "Compiling Yara rules")
-		compiler, err = LoadYaraRules(config.Input.Content.Yara)
+		compiler, err = LoadYaraRules(config.Input.Content.Yara, config.AdvancedParameters.YaraRC4Key)
 		if err != nil {
 			LogMessage(LOG_ERROR, err)
 			os.Exit(1)
@@ -195,11 +208,11 @@ func main() {
 	// start main routine
 	for _, basePath := range basePaths {
 		LogMessage(LOG_INFO, "[INFO]", "Enumerating files in", basePath)
-		var matchContent *[]string
-		var matchPattern *[]string
+		var matchContent []string
+		var matchPattern []string
 
 		// files listing
-		files := ListFilesRecursively(basePath, excludedPaths)
+		files := *ListFilesRecursively(basePath, excludedPaths)
 		if runtime.GOOS != "windows" {
 			excludedPaths = append(excludedPaths, basePath)
 		}
@@ -212,10 +225,10 @@ func main() {
 				re := regexp2.MustCompile(pattern, regexp2.IgnoreCase)
 				pathRegexPatterns = append(pathRegexPatterns, re)
 			}
-			matchPattern = PathsFinder(files, pathRegexPatterns)
+			matchPattern = *PathsFinder(&files, pathRegexPatterns)
 			if !config.Options.ContentMatchDependsOnPathMatch {
-				for _, file := range *matchPattern {
-					LogMessage(LOG_INFO, "[ALERT]", "File path match on:", file)
+				for i := 0; i < len(matchPattern); i++ {
+					LogMessage(LOG_INFO, "[ALERT]", "File path match on:", matchPattern[i])
 				}
 			}
 
@@ -227,32 +240,32 @@ func main() {
 		if len(config.Input.Content.Grep) > 0 || len(config.Input.Content.Checksum) > 0 {
 			LogMessage(LOG_INFO, "[INFO]", "Checking for content and checksum matchs in", basePath)
 			if config.Options.ContentMatchDependsOnPathMatch {
-				matchContent = FindInFiles(matchPattern, config.Input.Content.Grep, config.Input.Content.Checksum)
+				matchContent = *FindInFiles(&matchPattern, config.Input.Content.Grep, config.Input.Content.Checksum, config.AdvancedParameters.MaxScanFilesize, config.AdvancedParameters.CleanMemoryIfFileGreaterThanSize)
 			} else {
-				matchContent = FindInFiles(files, config.Input.Content.Grep, config.Input.Content.Checksum)
+				matchContent = *FindInFiles(&files, config.Input.Content.Grep, config.Input.Content.Checksum, config.AdvancedParameters.MaxScanFilesize, config.AdvancedParameters.CleanMemoryIfFileGreaterThanSize)
 			}
 		}
 
 		// match content - yara
 		if len(config.Input.Content.Yara) > 0 {
-			if (len(*matchPattern) == 0 && config.Options.ContentMatchDependsOnPathMatch) || (len(*files) == 0 && !config.Options.ContentMatchDependsOnPathMatch) {
+			if (len(matchPattern) == 0 && config.Options.ContentMatchDependsOnPathMatch) || (len(files) == 0 && !config.Options.ContentMatchDependsOnPathMatch) {
 				LogMessage(LOG_INFO, "[INFO]", "Neither path nor pattern match. no file to scan with YARA.", basePath)
 			} else {
 				LogMessage(LOG_INFO, "[INFO]", "Checking for yara matchs in", basePath)
 				if config.Options.ContentMatchDependsOnPathMatch {
-					InitProgressbar(int64(len(*matchPattern)))
-					for _, file := range *matchPattern {
+					InitProgressbar(int64(len(matchPattern)))
+					for i := 0; i < len(matchPattern); i++ {
 						ProgressBarStep()
-						if FileAnalyzeYaraMatch(file, rules) && (len(*matchContent) == 0 || !Contains(*matchContent, file)) {
-							*matchContent = append(*matchContent, file)
+						if FileAnalyzeYaraMatch(matchPattern[i], rules) && (len(matchContent) == 0 || !Contains(matchContent, matchPattern[i])) {
+							matchContent = append(matchContent, matchPattern[i])
 						}
 					}
 				} else {
-					InitProgressbar(int64(len(*files)))
-					for _, file := range *files {
+					InitProgressbar(int64(len(files)))
+					for i := 0; i < len(files); i++ {
 						ProgressBarStep()
-						if FileAnalyzeYaraMatch(file, rules) && (len(*matchContent) == 0 || !Contains(*matchContent, file)) {
-							*matchContent = append(*matchContent, file)
+						if FileAnalyzeYaraMatch(files[i], rules) && (len(matchContent) == 0 || !Contains(matchContent, files[i])) {
+							matchContent = append(matchContent, files[i])
 						}
 					}
 				}
@@ -266,27 +279,27 @@ func main() {
 
 		// handle false condition on ContentMatchDependsOnPathMatch options
 		if len(config.Input.Path) > 0 && !config.Options.ContentMatchDependsOnPathMatch {
-			for _, p := range *matchPattern {
-				if !Contains(*matchContent, p) {
-					*matchContent = append(*matchContent, p)
+			for i := 0; i < len(matchPattern); i++ {
+				if !Contains(matchContent, matchPattern[i]) {
+					matchContent = append(matchContent, matchPattern[i])
 				}
 			}
 		}
 
 		// listing and copy matching files
 		LogMessage(LOG_INFO, "[INFO]", "scan finished in", basePath)
-		if len(*matchContent) > 0 {
+		if len(matchContent) > 0 {
 			LogMessage(LOG_INFO, "[INFO]", "Matching files: ")
-			for _, p := range *matchContent {
-				LogMessage(LOG_INFO, "  |", p)
+			for i := 0; i < len(matchContent); i++ {
+				LogMessage(LOG_INFO, "  |", matchContent[i])
 			}
 
 			if config.Output.CopyMatchingFiles {
 				LogMessage(LOG_INFO, "[INFO]", "Copy all matching files")
-				InitProgressbar(int64(len(*matchPattern)))
-				for _, f := range *matchContent {
+				InitProgressbar(int64(len(matchPattern)))
+				for i := 0; i < len(matchContent); i++ {
 					ProgressBarStep()
-					FileCopy(f, config.Output.FilesCopyPath, config.Output.Base64Files)
+					FileCopy(matchContent[i], config.Output.FilesCopyPath, config.Output.Base64Files)
 				}
 			}
 		} else {

@@ -11,9 +11,10 @@ import (
 )
 
 type Configuration struct {
-	Input   Input   `yaml:"input"`
-	Options Options `yaml:"options"`
-	Output  Output  `yaml:"output"`
+	Input              Input              `yaml:"input"`
+	Options            Options            `yaml:"options"`
+	Output             Output             `yaml:"output"`
+	AdvancedParameters AdvancedParameters `yaml:"advancedparameters"`
 }
 
 type Input struct {
@@ -41,6 +42,12 @@ type Output struct {
 	CopyMatchingFiles bool   `yaml:"copyMatchingFiles"`
 }
 
+type AdvancedParameters struct {
+	YaraRC4Key                       string `yaml:"yaraRC4Key"`
+	MaxScanFilesize                  int    `yaml:"maxScanFilesize"`
+	CleanMemoryIfFileGreaterThanSize int    `yaml:"cleanMemoryIfFileGreaterThanSize"`
+}
+
 func (c *Configuration) getConfiguration(configFile string) *Configuration {
 	var yamlFile []byte
 	var err error
@@ -65,7 +72,19 @@ func (c *Configuration) getConfiguration(configFile string) *Configuration {
 
 	err = yaml.Unmarshal(yamlFile, c)
 	if err != nil {
-		log.Fatalf("Configuration file parsing error: %v", err)
+		err = yaml.Unmarshal(RC4Cipher(yamlFile, BUILDER_RC4_KEY), c)
+		if err != nil {
+			log.Fatalf("Configuration file parsing error: %v", err)
+		}
+	}
+
+	if len(c.Input.Path) == 0 || (len(c.Input.Content.Grep) == 0 && len(c.Input.Content.Yara) == 0 && len(c.Input.Content.Checksum) == 0) {
+		c.Options.ContentMatchDependsOnPathMatch = false
+	}
+
+	if !c.Output.CopyMatchingFiles {
+		c.Output.Base64Files = false
+		c.Output.FilesCopyPath = ""
 	}
 
 	environmentVariables := GetEnvironmentVariables()

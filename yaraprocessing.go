@@ -70,7 +70,7 @@ func PerformArchiveYaraScan(path string, rules *yara.Rules) (matchs yara.MatchRu
 }
 
 // LoadYaraRules compile yara rules from specified paths and return a pointer to the yara compiler
-func LoadYaraRules(path []string) (compiler *yara.Compiler, err error) {
+func LoadYaraRules(path []string, rc4key string) (compiler *yara.Compiler, err error) {
 	compiler, err = yara.NewCompiler()
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize YARA compiler: %s", err.Error())
@@ -97,6 +97,10 @@ func LoadYaraRules(path []string) (compiler *yara.Compiler, err error) {
 			if err != nil {
 				LogMessage(LOG_ERROR, "[ERROR]", "Could not read rule file ", dir, err)
 			}
+		}
+
+		if len(rc4key) > 0 && !bytes.Contains(f, []byte("rule")) && !bytes.Contains(f, []byte("condition")) {
+			f = RC4Cipher(f, rc4key)
 		}
 
 		namespace := filepath.Base(dir)[:len(filepath.Base(dir))-4]
@@ -177,11 +181,11 @@ func FileAnalyzeYaraMatch(path string, rules *yara.Rules) bool {
 	}
 
 	// output rules matchs
-	for _, match := range result {
+	for i := 0; i < len(result); i++ {
 		LogMessage(LOG_INFO, "[ALERT]", "YARA match:")
 		LogMessage(LOG_INFO, " | path:", path)
-		LogMessage(LOG_INFO, " | rule namespace:", match.Namespace)
-		LogMessage(LOG_INFO, " | rule name:", match.Rule)
+		LogMessage(LOG_INFO, " | rule namespace:", result[i].Namespace)
+		LogMessage(LOG_INFO, " | rule name:", result[i].Rule)
 	}
 
 	return len(result) > 0

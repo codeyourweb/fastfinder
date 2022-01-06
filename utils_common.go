@@ -1,12 +1,15 @@
 package main
 
 import (
+	"crypto/rc4"
+	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
 	"io"
 	"log"
 	"net/url"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 )
@@ -118,8 +121,8 @@ func FileCopy(src, dst string, base64Encode bool) {
 
 // Contains checks if a string is contained in a slice of strings
 func Contains(s []string, str string) bool {
-	for _, v := range s {
-		if v == str {
+	for i := 0; i < len(s); i++ {
+		if s[i] == str {
 			return true
 		}
 	}
@@ -140,4 +143,66 @@ func IsValidUrl(toTest string) bool {
 	}
 
 	return true
+}
+
+// GetHostname returns the hostname of the current machine
+func GetHostname() string {
+	name, err := os.Hostname()
+	if err != nil {
+		return ""
+	}
+
+	return name
+}
+
+// GetUsername returns the current user name
+func GetUsername() string {
+	user, err := user.Current()
+	if err != nil {
+		return ""
+	}
+
+	return user.Username
+}
+
+// GetCurrentDirectory returns the current directory
+func GetCurrentDirectory() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+
+	return dir
+}
+
+// Get SHA256 checksum of the specified file
+func FileSHA256Sum(path string) string {
+	file, err := os.Open(path)
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer file.Close()
+
+	hash := sha256.New()
+	_, err = io.Copy(hash, file)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return fmt.Sprintf("%x", hash.Sum(nil))
+}
+
+// RC4Cipher is used on Yara ciphered rules
+func RC4Cipher(content []byte, key string) []byte {
+	c, err := rc4.NewCipher([]byte(key))
+	if err != nil {
+		log.Fatal("[ERROR] ", err)
+	}
+
+	c.XORKeyStream(content, content)
+
+	return content
 }
