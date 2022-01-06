@@ -3,6 +3,7 @@ package main
 import (
 	"io/ioutil"
 	"log"
+	"net/http"
 	"regexp"
 	"strings"
 
@@ -35,16 +36,33 @@ type Options struct {
 }
 
 type Output struct {
-	Base64Files   bool   `yaml:"base64Files"`
-	FilesCopyPath string `yaml:"filesCopyPath"`
+	Base64Files       bool   `yaml:"base64Files"`
+	FilesCopyPath     string `yaml:"filesCopyPath"`
+	CopyMatchingFiles bool   `yaml:"copyMatchingFiles"`
 }
 
 func (c *Configuration) getConfiguration(configFile string) *Configuration {
+	var yamlFile []byte
+	var err error
+	configFile = strings.TrimSpace(configFile)
 
-	yamlFile, err := ioutil.ReadFile(configFile)
-	if err != nil {
-		log.Fatalf("Configuration file reading error #%v ", err)
+	if IsValidUrl(configFile) {
+		response, err := http.Get(configFile)
+		if err != nil {
+			log.Fatalf("Configuration file URL unreachable %v", err)
+		}
+		yamlFile, err = ioutil.ReadAll(response.Body)
+		if err != nil {
+			log.Fatalf("Configuration file URL content unreadable %v", err)
+		}
+		response.Body.Close()
+	} else {
+		yamlFile, err = ioutil.ReadFile(configFile)
+		if err != nil {
+			log.Fatalf("Configuration file reading error %v ", err)
+		}
 	}
+
 	err = yaml.Unmarshal(yamlFile, c)
 	if err != nil {
 		log.Fatalf("Configuration file parsing error: %v", err)

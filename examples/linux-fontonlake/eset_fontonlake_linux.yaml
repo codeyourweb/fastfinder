@@ -1,0 +1,54 @@
+# FontOnLake is a malware family utilizing well-designed custom modules that are constantly under
+# development It targets systems running Linux and provides remote access to those systems for its
+# operators, collects credentials, and serves as a proxy server Its presence is always accompanied by a
+#rootkit, which conceals its existence
+#
+# search for:
+#   - one of the three specified file paths
+#   - OR any file matching the specified sha1 hash
+# reference:
+#   - https://www.welivesecurity.com/wp-content/uploads/2021/10/eset_fontonlake.pdf
+input:
+    path:
+      - '/lib/modules/\*/kernel/drivers/input/misc/ati_remote3.ko'
+      - '/etc/sysconfig/modules/ati_remote3.modules'
+      - '/tmp/.tmp_\*'
+    content:
+        grep: []
+        yara: []
+        checksum:
+         - '1f52db8e3fc3040c017928f5ffd99d9fa4757bf8'
+         - '771340752985dd8e84cf3843c9843ef7a76a39e7'
+         - '27e868c0505144f0708170df701d7c1ae8e1faea'
+         - '45e94abedad8c0044a43ff6d72a5c44c6abd9378'
+         - '1829b0e34807765f2b254ea5514d7bb587aeca3f'
+         - '8d6aca824d1a717ae908669e356e2d4bb6f857b0'
+         - '38b09d690fafe81e964cbd45ec7cf20dcb296b4d'
+         - '56556a53741111c04853a5e84744807eeadff63a'
+         - 'fe26cb98aa1416a8b1f6ced4ac1b5400517257b2'
+         - 'd4e0e38ec69cbb71475d8a22edb428c3e955a5ea'
+         - '204046b3279b487863738ddb17cbb6718af2a83a'
+         - '9c803d1e39f335f213f367a84d3df6150e5fe172'
+         - 'bfcc4e6628b63c92bc46219937ea7582ea6fbb41'
+         - '515cfb5cb760d3a1da31e9f906ea7f84f17c5136'
+         - 'a9ed0837e3af698906b229ca28b988010bcd5dc1'
+         - '56cb85675fe7a7896f0aa5365ff391ac376d9953'
+         - '72c9c5ce50a38d0a2b9cef6adeab1008bff12496'
+         - 'b439a503d68ad7164e0f32b03243a593312040f8'
+         - 'e7bf0a35c2cd79a658615e312d35bbcff9782672'
+         - '56580e7ba6bf26d878c538985a6dc62ca094cd04'
+         - '49d4e5fcd3a3018a88f329ae47ef4c87c6a2d27a'
+         - '74d44c2949da7d5164adec78801733680da8c110'
+         - '74d755e8566340a752b1db603ef468253adab6bd'
+         - 'e20f87497023e3454b5b1a22fe6c5a5501eae2cb'
+         - '6f43c598cd9e63f550ff4e6ef51500e47d0211f3'
+options:
+    contentMatchDependsOnPathMatch: false
+    findInHardDrives: true
+    findInRemovableDrives: false
+    findInNetworkDrives: false
+    findInCDRomDrives: false
+output:
+    copyMatchingFiles: false
+    base64Files: false
+    filesCopyPath: ''

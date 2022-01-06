@@ -3,9 +3,12 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"strings"
 
 	"github.com/gen2brain/go-unarr"
 	"github.com/h2non/filetype"
@@ -28,13 +31,21 @@ func PerformArchiveYaraScan(path string, rules *yara.Rules) (matchs yara.MatchRu
 
 	a, err := unarr.NewArchive(path)
 	if err != nil {
-		return nil, err
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+		return PerformYaraScan(&content, rules)
 	}
 	defer a.Close()
 
 	list, err := a.List()
 	if err != nil {
-		return nil, err
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+		return PerformYaraScan(&content, rules)
 	}
 	for _, f := range list {
 		err := a.EntryFor(f)
@@ -66,9 +77,26 @@ func LoadYaraRules(path []string) (compiler *yara.Compiler, err error) {
 	}
 
 	for _, dir := range path {
-		f, err := os.ReadFile(dir)
-		if err != nil {
-			LogMessage(LOG_ERROR, "[ERROR]", "Could not read rule file ", dir, err)
+		var f []byte
+		var err error
+
+		dir = strings.TrimSpace(dir)
+
+		if IsValidUrl(dir) {
+			response, err := http.Get(dir)
+			if err != nil {
+				LogMessage(LOG_ERROR, "YARA file URL unreachable", dir, err)
+			}
+			f, err = ioutil.ReadAll(response.Body)
+			if err != nil {
+				LogMessage(LOG_ERROR, "YARA file URL content unreadable", dir, err)
+			}
+			response.Body.Close()
+		} else {
+			f, err = os.ReadFile(dir)
+			if err != nil {
+				LogMessage(LOG_ERROR, "[ERROR]", "Could not read rule file ", dir, err)
+			}
 		}
 
 		namespace := filepath.Base(dir)[:len(filepath.Base(dir))-4]
@@ -146,6 +174,14 @@ func FileAnalyzeYaraMatch(path string, rules *yara.Rules) bool {
 			LogMessage(LOG_ERROR, "[ERROR]", "Error performing yara scan on", path, err)
 			return false
 		}
+	}
+
+	// output rules matchs
+	for _, match := range result {
+		LogMessage(LOG_INFO, "[ALERT]", "YARA match:")
+		LogMessage(LOG_INFO, " | path:", path)
+		LogMessage(LOG_INFO, " | rule namespace:", match.Namespace)
+		LogMessage(LOG_INFO, " | rule name:", match.Rule)
 	}
 
 	return len(result) > 0

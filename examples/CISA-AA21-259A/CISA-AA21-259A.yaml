@@ -1,0 +1,35 @@
+# APT Actors Exploiting Newly Identified Vulnerability in ManageEngine ADSelfService Plus (CVE-2021-40539)
+# search for:
+#   - msiexec.exe in "MagageEngine" directory or subdirectory
+#   - OR *.bat file in %PUBLIC% directory
+#   - OR any file starting by "custom." in %PUBLIC% directory
+#   - OR any file matching one of the two specified yara rules
+#   - OR any file matching one of the specified sha256 hash
+# reference:
+#   - https://www.cisa.gov/uscert/ncas/alerts/aa21-259a
+#   - https://unit42.paloaltonetworks.com/tiltedtemple-manageengine-servicedesk-plus/
+input:
+    path:
+      - '/(?i)\\ManageEngine\\.+msiexec\.exe$/'
+      - '%PUBLIC%\\*.bat'
+      - '%PUBLIC%\custom\*'
+    content:
+        grep: []
+        yara: 
+         - 'EncryptJSP.yar'
+         - 'ReportGenerate_jsp.yar'
+        checksum:
+         - '068d1b3813489e41116867729504c40019ff2b1fe32aab4716d429780e666324'
+         - '49a6f77d380512b274baff4f78783f54cb962e2a8a5e238a453058a351fcfbba'
+         - 'ecd8c9967b0127a12d6db61964a82970ee5d38f82618d5db4d8eddbb3b5726b7'
+         - '67ee552d7c1d46885b91628c603f24b66a9755858e098748f7e7862a71baa015'
+options:
+    contentMatchDependsOnPathMatch: false
+    findInHardDrives: true
+    findInRemovableDrives: false
+    findInNetworkDrives: false
+    findInCDRomDrives: false
+output:
+    copyMatchingFiles: false
+    base64Files: false
+    filesCopyPath: ''

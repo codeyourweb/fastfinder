@@ -3,6 +3,7 @@
 package main
 
 import (
+	"log"
 	"bufio"
 	"bytes"
 	"fmt"
@@ -46,6 +47,23 @@ func (c *cmdRunner) Run(cmd string, args []string) (io.Reader, error) {
 	case <-timer:
 		return nil, fmt.Errorf("time out (cmd:%v args:%v)", cmd, args)
 	}
+}
+
+// CheckCurrentUserPermissions retieves the current user permissions and check if the program run with elevated privileges
+func CheckCurrentUserPermissions() (admin bool, elevated bool) {
+	cmd := exec.Command("id", "-u")
+	output, err := cmd.Output()
+
+	if err != nil {
+		log.Fatalf("[ERROR] Error finding current user privileges: %s", err)
+	}
+
+	i, err := strconv.Atoi(string(output[:len(output)-1]))
+	if err != nil {
+		log.Fatalf("[ERROR] Error finding current user privileges: %s", err)
+	}
+
+	return i == 0, i == 0
 }
 
 // HideConsoleWindow hide the process console window

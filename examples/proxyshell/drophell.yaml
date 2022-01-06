@@ -1,0 +1,31 @@
+# Proxyshell exploitation - DropHell malware
+# search for:
+#   - *.exe or *.aspx in a "ZING" directory or subdirectory
+#   - OR aspx webshell in Page_Load function
+#   - OR any of the specified sha256 hash
+# reference:
+#   - https://twitter.com/DeepInstinctSec/status/1450129546125131780
+#   - https://www.deepinstinct.com/blog/do-not-exchange-it-has-a-shell-inside
+#   - https://www.huntress.com/blog/rapid-response-microsoft-exchange-servers-still-vulnerable-to-proxyshell-exploit
+input:
+    path:
+      - '/(?i)\\ZING\\.+(\.(exe)|(aspx))$/'
+    content:
+        grep: 
+         - '<script language="JScript" runat="server">function Page_Load(){eval(Request["'
+        yara: []
+        checksum:
+         - '742fd14cd1d53e3bd7a38e7f90956b3dc4185c2a31fccd0afc673cb98bbbefe6'
+         - '8f5156a457e287c2c60239d243fa8781fedb69b85b86f15e04b43b96abc53bc4'
+         - 'eb17d105dd5132ada75485963e6dbb344b0fe3109a9a583cebc0bf1795352185'
+         - '1f6aa7ddfc249e7a7f4c9fa2dadee249009f4d20676c3c09effe23dbe81c3be3'
+options:
+    contentMatchDependsOnPathMatch: false
+    findInHardDrives: true
+    findInRemovableDrives: false
+    findInNetworkDrives: false
+    findInCDRomDrives: false
+output:
+    copyMatchingFiles: false
+    base64Files: false
+    filesCopyPath: ''

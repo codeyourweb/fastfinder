@@ -1,0 +1,18 @@
+input:
+    path:
+      - '*.exe'
+    content:
+        grep: []
+        yara:
+          - 'https://bit.ly/3dKRPnF'
+        checksum: []
+options:
+    contentMatchDependsOnPathMatch: true
+    findInHardDrives: true
+    findInRemovableDrives: false
+    findInNetworkDrives: false
+    findInCDRomDrives: false
+output:
+    copyMatchingFiles: false
+    base64Files: false
+    filesCopyPath: ''

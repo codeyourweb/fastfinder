@@ -3,6 +3,7 @@
 package main
 
 import (
+	"log"
 	"syscall"
 	"unsafe"
 
@@ -20,6 +21,33 @@ var (
 	procGetConsoleWindow = modKernel32.NewProc("GetConsoleWindow")
 	procShowWindow       = modUser32.NewProc("ShowWindow")
 )
+
+// CheckCurrentUserPermissions retieves the current user permissions and check if the program run with elevated privileges
+func CheckCurrentUserPermissions() (admin bool, elevated bool) {
+	var err error
+	var sid *windows.SID
+	err = windows.AllocateAndInitializeSid(
+		&windows.SECURITY_NT_AUTHORITY,
+		2,
+		windows.SECURITY_BUILTIN_DOMAIN_RID,
+		windows.DOMAIN_ALIAS_RID_ADMINS,
+		0, 0, 0, 0, 0, 0,
+		&sid)
+	if err != nil {
+		log.Fatalf("[ERROR] SID Error: %s", err)
+		return false, false
+	}
+	defer windows.FreeSid(sid)
+	token := windows.Token(0)
+
+	admin, err = token.IsMember(sid)
+	if err != nil {
+		log.Fatalf("[ERROR] Token Membership Error: %s", err)
+		return false, false
+	}
+
+	return admin, token.IsElevated()
+}
 
 // HideConsoleWindow hide the process console window
 func HideConsoleWindow() {

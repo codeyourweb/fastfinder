@@ -1,7 +1,9 @@
 // #cgo !yara_no_pkg_config,!yara_static  pkg-config: yara
 // #cgo !yara_no_pkg_config,yara_static   pkg-config: --static yara
 // #cgo yara_no_pkg_config                LDFLAGS:    -lyara
-// compile: go build -tags yara_static -a -ldflags '-s -w -extldflags "-static"' .
+// compile: go build -trimpath -tags yara_static -a -ldflags '-s -w -extldflags "-static"' .
+// suggestion: reduce binary size with upx --best --lzma .\fastfinder.exe
+
 package main
 
 import (
@@ -11,6 +13,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/akamensky/argparse"
 	"github.com/dlclark/regexp2"
@@ -18,14 +21,13 @@ import (
 )
 
 func main() {
+	const FASTFINDER_VERSION = "1.4.2"
+	const YARA_VERSION = "4.1.3"
 	var compiler *yara.Compiler
 	var rules *yara.Rules
 	var err error
 
-	if _, err = CreateMutex("fastfinder"); err != nil {
-		LogMessage(LOG_ERROR, "[ERROR]", "Only one instance or fastfinder can be launched:", err.Error())
-		os.Exit(1)
-	}
+	PrintFastfinderLogo()
 
 	// parse configuration file
 	parser := argparse.NewParser("fastfinder", "Incident Response - Fast suspicious file finder")
@@ -43,9 +45,26 @@ func main() {
 
 	// version
 	if *pFinderVersion {
-		fmt.Println("fastfinder v1.3b")
+		fmt.Println("fastfinder v" + FASTFINDER_VERSION + " with embedded YARA v" + YARA_VERSION)
 		if !Contains(os.Args, "-c") && !Contains(os.Args, "--configuration") {
 			os.Exit(0)
+		}
+	}
+
+	if len(*pSfxPath) == 0 {
+		// create mutex
+		if _, err = CreateMutex("fastfinder"); err != nil {
+			LogMessage(LOG_ERROR, "[ERROR]", "Only one instance or fastfinder can be launched:", err.Error())
+			os.Exit(1)
+		}
+
+		// Retrieve current user permissions
+		admin, elevated := CheckCurrentUserPermissions()
+		if !admin && !elevated {
+			LogMessage(LOG_INFO, "[WARNING] fastfinder is not running with fully elevated righs. Notice that the analysis will be partial and limited to the current user scope")
+			if !*pHideWindow {
+				time.Sleep(3 * time.Second)
+			}
 		}
 	}
 
@@ -60,12 +79,12 @@ func main() {
 	}
 
 	// window hidden
-	if *pHideWindow {
+	if *pHideWindow && len(*pSfxPath) == 0 {
 		HideConsoleWindow()
 	}
 
 	// init file logging
-	if len(*pOutLogPath) > 0 {
+	if len(*pOutLogPath) > 0 && len(*pSfxPath) == 0 {
 		StdoutToLogFile(*pOutLogPath)
 		StderrToLogFile(*pOutLogPath)
 	}
@@ -100,6 +119,11 @@ func main() {
 		if err != nil {
 			LogMessage(LOG_ERROR, err)
 			os.Exit(1)
+		}
+
+		LogMessage(LOG_INFO, "[INIT]", len(rules.GetRules()), "YARA rules compiled")
+		for _, r := range rules.GetRules() {
+			LogMessage(LOG_INFO, " | rule:", r.Identifier())
 		}
 	}
 
@@ -191,7 +215,7 @@ func main() {
 			matchPattern = PathsFinder(files, pathRegexPatterns)
 			if !config.Options.ContentMatchDependsOnPathMatch {
 				for _, file := range *matchPattern {
-					LogMessage(LOG_INFO, "[ALERT]", "File match on", file)
+					LogMessage(LOG_INFO, "[ALERT]", "File path match on:", file)
 				}
 			}
 
@@ -211,23 +235,25 @@ func main() {
 
 		// match content - yara
 		if len(config.Input.Content.Yara) > 0 {
-			LogMessage(LOG_INFO, "[INFO]", "Checking for yara matchs in", basePath)
-			if config.Options.ContentMatchDependsOnPathMatch {
-				InitProgressbar(int64(len(*matchPattern)))
-				for _, file := range *matchPattern {
-					ProgressBarStep()
-					if FileAnalyzeYaraMatch(file, rules) && !Contains(*matchContent, file) {
-						LogMessage(LOG_INFO, "[ALERT]", "File match on", file)
-						*matchContent = append(*matchContent, file)
-					}
-				}
+			if (len(*matchPattern) == 0 && config.Options.ContentMatchDependsOnPathMatch) || (len(*files) == 0 && !config.Options.ContentMatchDependsOnPathMatch) {
+				LogMessage(LOG_INFO, "[INFO]", "Neither path nor pattern match. no file to scan with YARA.", basePath)
 			} else {
-				InitProgressbar(int64(len(*files)))
-				for _, file := range *files {
-					ProgressBarStep()
-					if FileAnalyzeYaraMatch(file, rules) && !Contains(*matchContent, file) {
-						LogMessage(LOG_INFO, "[ALERT]", "File match on", file)
-						*matchContent = append(*matchContent, file)
+				LogMessage(LOG_INFO, "[INFO]", "Checking for yara matchs in", basePath)
+				if config.Options.ContentMatchDependsOnPathMatch {
+					InitProgressbar(int64(len(*matchPattern)))
+					for _, file := range *matchPattern {
+						ProgressBarStep()
+						if FileAnalyzeYaraMatch(file, rules) && (len(*matchContent) == 0 || !Contains(*matchContent, file)) {
+							*matchContent = append(*matchContent, file)
+						}
+					}
+				} else {
+					InitProgressbar(int64(len(*files)))
+					for _, file := range *files {
+						ProgressBarStep()
+						if FileAnalyzeYaraMatch(file, rules) && (len(*matchContent) == 0 || !Contains(*matchContent, file)) {
+							*matchContent = append(*matchContent, file)
+						}
 					}
 				}
 			}
@@ -247,13 +273,21 @@ func main() {
 			}
 		}
 
-		// copy matching files
+		// listing and copy matching files
+		LogMessage(LOG_INFO, "[INFO]", "scan finished in", basePath)
 		if len(*matchContent) > 0 {
-			LogMessage(LOG_INFO, "[INFO]", "Copy all matching files")
-			InitProgressbar(int64(len(*matchPattern)))
-			for _, f := range *matchContent {
-				ProgressBarStep()
-				FileCopy(f, config.Output.FilesCopyPath, config.Output.Base64Files)
+			LogMessage(LOG_INFO, "[INFO]", "Matching files: ")
+			for _, p := range *matchContent {
+				LogMessage(LOG_INFO, "  |", p)
+			}
+
+			if config.Output.CopyMatchingFiles {
+				LogMessage(LOG_INFO, "[INFO]", "Copy all matching files")
+				InitProgressbar(int64(len(*matchPattern)))
+				for _, f := range *matchContent {
+					ProgressBarStep()
+					FileCopy(f, config.Output.FilesCopyPath, config.Output.Base64Files)
+				}
 			}
 		} else {
 			LogMessage(LOG_INFO, "[INFO]", "No match found")
