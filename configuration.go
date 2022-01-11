@@ -53,6 +53,7 @@ func (c *Configuration) getConfiguration(configFile string) *Configuration {
 	var err error
 	configFile = strings.TrimSpace(configFile)
 
+	// configuration reading
 	if IsValidUrl(configFile) {
 		response, err := http.Get(configFile)
 		if err != nil {
@@ -70,14 +71,17 @@ func (c *Configuration) getConfiguration(configFile string) *Configuration {
 		}
 	}
 
+	// unmarshal yaml file
 	err = yaml.Unmarshal(yamlFile, c)
 	if err != nil {
+		// if yaml unmarshal fails, try to RC4 decrypt it
 		err = yaml.Unmarshal(RC4Cipher(yamlFile, BUILDER_RC4_KEY), c)
 		if err != nil {
 			log.Fatalf("Configuration file parsing error: %v", err)
 		}
 	}
 
+	// check for specific user configuration params inconsistencies
 	if len(c.Input.Path) == 0 || (len(c.Input.Content.Grep) == 0 && len(c.Input.Content.Yara) == 0 && len(c.Input.Content.Checksum) == 0) {
 		c.Options.ContentMatchDependsOnPathMatch = false
 	}
@@ -87,6 +91,7 @@ func (c *Configuration) getConfiguration(configFile string) *Configuration {
 		c.Output.FilesCopyPath = ""
 	}
 
+	// parsing input paths
 	environmentVariables := GetEnvironmentVariables()
 
 	for i := 0; i < len(c.Input.Path); i++ {

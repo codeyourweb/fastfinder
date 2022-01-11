@@ -1,7 +1,7 @@
 // #cgo !yara_no_pkg_config,!yara_static  pkg-config: yara
 // #cgo !yara_no_pkg_config,yara_static   pkg-config: --static yara
 // #cgo yara_no_pkg_config                LDFLAGS:    -lyara
-// compile: go build -trimpath -tags yara_static -a -ldflags '-s -w -extldflags "-static"' .
+// compile: go build -trimpath -tags yara_static -a -ldflags '-H=windowsgui -s -w -extldflags "-static"' .
 // suggestion: reduce binary size with "upx --best --lzma .\fastfinder.exe"
 
 package main
@@ -33,7 +33,7 @@ func main() {
 
 	// parse configuration file
 	parser := argparse.NewParser("fastfinder", "Incident Response - Fast suspicious file finder")
-	pConfigPath := parser.String("c", "configuration", &argparse.Options{Required: false, Default: "configuration.yaml", Help: "Fastfind configuration file"})
+	pConfigPath := parser.String("c", "configuration", &argparse.Options{Required: false, Default: "", Help: "Fastfind configuration file"})
 	pSfxPath := parser.String("b", "build", &argparse.Options{Required: false, Help: "Output a standalone package with configuration and rules in a single binary"})
 	pOutLogPath := parser.String("o", "output", &argparse.Options{Required: false, Help: "Save fastfinder logs in the specified file"})
 	pHideWindow := parser.Flag("n", "nowindow", &argparse.Options{Required: false, Help: "Hide fastfinder window"})
@@ -45,6 +45,11 @@ func main() {
 		log.Fatal(parser.Usage(err))
 	}
 
+	if len(*pConfigPath) == 0 {
+		OpenFileDialog()
+		*pConfigPath = UIselectedConfigPath
+	}
+
 	// version
 	if *pFinderVersion {
 		fmt.Println("fastfinder v" + FASTFINDER_VERSION + " with embedded YARA v" + YARA_VERSION)
@@ -54,7 +59,7 @@ func main() {
 	}
 
 	// progressbar
-	EnableProgressbar(*pShowProgress)
+	EnableProgressbar(*pShowProgress && len(*pOutLogPath) == 0)
 
 	// configuration parsing
 	var config Configuration
@@ -117,6 +122,11 @@ func main() {
 				time.Sleep(3 * time.Second)
 			}
 		}
+	}
+
+	if *pShowProgress && len(*pOutLogPath) > 0 {
+		LogMessage(LOG_INFO, "[WARNING]", "For a better user experience. Progressbar is disabled when console is logged in a file")
+		time.Sleep(3 * time.Second)
 	}
 
 	// if yara rules mentionned - compile them
