@@ -39,13 +39,13 @@ func FindInFiles(files *[]string, patterns []string, hashList []string, maxScanF
 		ProgressBarStep()
 		b, err := ioutil.ReadFile(path)
 		if err != nil {
-			LogMessage(LOG_ERROR, "[ERROR]", "Unable to read file", path)
+			LogMessage(LOG_ERROR, "{ERROR}", "Unable to read file", path)
 			continue
 		}
 
 		// cancel analysis if file size is greater than 2Gb
 		if len(b) > 1024*1024*2048 {
-			LogMessage(LOG_ERROR, "[ERROR]", "File size is greater than 2Gb, skipping", path)
+			LogMessage(LOG_ERROR, "{ERROR}", "File size is greater than 2Gb, skipping", path)
 			continue
 		}
 
@@ -57,7 +57,7 @@ func FindInFiles(files *[]string, patterns []string, hashList []string, maxScanF
 
 		for _, m := range CheckFileChecksumAndContent(path, b, hashList, patterns) {
 			if !Contains(matchingFiles, m) {
-				LogMessage(LOG_INFO, "[ALERT]", "File content match on:", path)
+				LogMessage(LOG_ALERT, "[ALERT]", "File content match on:", path)
 				matchingFiles = append(matchingFiles, m)
 			}
 		}
@@ -66,27 +66,27 @@ func FindInFiles(files *[]string, patterns []string, hashList []string, maxScanF
 		if Contains([]string{"application/x-tar", "application/x-7z-compressed", "application/zip", "application/vnd.rar"}, filetype.MIME.Value) {
 			zr, err := zip.OpenReader(path)
 			if err != nil {
-				LogMessage(LOG_ERROR, "[ERROR]", "Cant't open archive file:", path)
+				LogMessage(LOG_ERROR, "{ERROR}", "Cant't open archive file:", path)
 				continue
 			}
 
 			for _, subFile := range zr.File {
 				fr, err := subFile.Open()
 				if err != nil {
-					LogMessage(LOG_ERROR, "[ERROR]", "Can't open archive file member for reading:", path, subFile.Name)
+					LogMessage(LOG_ERROR, "{ERROR}", "Can't open archive file member for reading:", path, subFile.Name)
 					continue
 				}
 				defer fr.Close()
 
 				body, err := ioutil.ReadAll(fr)
 				if err != nil {
-					LogMessage(LOG_ERROR, "[ERROR]", "Unable to read file archive member:", path, subFile.Name)
+					LogMessage(LOG_ERROR, "{ERROR}", "Unable to read file archive member:", path, subFile.Name)
 					continue
 				}
 
 				for _, m := range CheckFileChecksumAndContent(path, body, hashList, patterns) {
 					if !Contains(matchingFiles, m) {
-						LogMessage(LOG_INFO, "[ALERT]", "File content match on:", path)
+						LogMessage(LOG_ALERT, "[ALERT]", "File content match on:", path)
 						matchingFiles = append(matchingFiles, m)
 					}
 				}

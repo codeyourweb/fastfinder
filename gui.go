@@ -11,13 +11,73 @@ import (
 	"github.com/rivo/tview"
 )
 
+var UIactive = true
 var UIapp = tview.NewApplication()
+var txtMatchs = tview.NewTextView()
+var txtStdout = tview.NewTextView()
+var txtStderr = tview.NewTextView()
 var UIselectedConfigPath string
 var UItmpConfigPath string
 
+// MainWindow display application UI
+func MainWindow() {
+	/*
+	 * TEXTVIEW : Windows app name
+	 */
+	txtAppTitle := tview.NewTextView().
+		SetDynamicColors(true).
+		SetText(RenderFastfinderVersion()).
+		SetTextAlign(tview.AlignCenter)
+
+	/*
+	 * TEXTVIEW : File matchs
+	 */
+	txtMatchs.
+		SetDynamicColors(true).
+		SetText("[yellow]File match:\n").
+		SetRegions(true).
+		SetChangedFunc(func() {
+			UIapp.Draw()
+		})
+
+	/*
+	 * TEXTVIEW : Program execution Output
+	 */
+	txtStdout.
+		SetDynamicColors(true).
+		SetText("[grey]Init and execution informations:\n").
+		SetRegions(true).
+		SetChangedFunc(func() {
+			UIapp.Draw()
+		})
+
+		/*
+		 * TEXTVIEW : execution errors
+		 */
+	txtStderr.
+		SetDynamicColors(true).
+		SetText("[red]Access and scan errors:\n").
+		SetRegions(true).
+		SetChangedFunc(func() {
+			UIapp.Draw()
+		})
+
+	/*
+	 * Building window
+	 */
+	grid := tview.NewGrid().SetRows(1, -5, -2).SetColumns(0, 0).SetBorders(true)
+	grid.AddItem(txtAppTitle, 0, 0, 1, 2, 0, 0, false)
+	grid.AddItem(txtMatchs, 1, 1, 1, 1, 0, 0, false)
+	grid.AddItem(txtStderr, 1, 0, 1, 1, 0, 0, false)
+	grid.AddItem(txtStdout, 2, 0, 1, 2, 0, 0, false)
+
+	if err := UIapp.SetRoot(grid, true).SetFocus(txtMatchs).Run(); err != nil {
+		UIapp.Stop()
+	}
+}
+
 // OpenFileDialog show a navigable tree view of the current directory.
 func OpenFileDialog() {
-
 	/*
 	 * TEXTVIEW : Dialog title
 	 */

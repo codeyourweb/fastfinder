@@ -95,7 +95,7 @@ func LoadYaraRules(path []string, rc4key string) (compiler *yara.Compiler, err e
 		} else {
 			f, err = os.ReadFile(dir)
 			if err != nil {
-				LogMessage(LOG_ERROR, "[ERROR]", "Could not read rule file ", dir, err)
+				LogMessage(LOG_ERROR, "{ERROR}", "Could not read rule file ", dir, err)
 			}
 		}
 
@@ -105,7 +105,7 @@ func LoadYaraRules(path []string, rc4key string) (compiler *yara.Compiler, err e
 
 		namespace := filepath.Base(dir)[:len(filepath.Base(dir))-4]
 		if err = compiler.AddString(string(f), namespace); err != nil {
-			LogMessage(LOG_ERROR, "[ERROR]", "Could not load rule file ", dir, err)
+			LogMessage(LOG_ERROR, "{ERROR}", "Could not load rule file ", dir, err)
 		}
 	}
 
@@ -137,20 +137,20 @@ func FileAnalyzeYaraMatch(path string, rules *yara.Rules) bool {
 	var result yara.MatchRules
 
 	if _, err = os.Stat(path); err != nil {
-		LogMessage(LOG_ERROR, "[ERROR]", path, err)
+		LogMessage(LOG_ERROR, "{ERROR}", path, err)
 		return false
 	}
 
 	// read file content
 	content, err = os.ReadFile(path)
 	if err != nil {
-		LogMessage(LOG_ERROR, "[ERROR]", path, err)
+		LogMessage(LOG_ERROR, "{ERROR}", path, err)
 		return false
 	}
 
 	filetype, err := filetype.Match(content)
 	if err != nil {
-		LogMessage(LOG_ERROR, "[ERROR]", path, err)
+		LogMessage(LOG_ERROR, "{ERROR}", path, err)
 		return false
 	}
 
@@ -169,23 +169,23 @@ func FileAnalyzeYaraMatch(path string, rules *yara.Rules) bool {
 	if Contains([]string{"application/x-tar", "application/x-7z-compressed", "application/zip", "application/vnd.rar"}, filetype.MIME.Value) {
 		result, err = PerformArchiveYaraScan(path, rules)
 		if err != nil {
-			LogMessage(LOG_ERROR, "[ERROR]", "Error performing yara scan on", path, err)
+			LogMessage(LOG_ERROR, "{ERROR}", "Error performing yara scan on", path, err)
 			return false
 		}
 	} else {
 		result, err = PerformYaraScan(&content, rules)
 		if err != nil {
-			LogMessage(LOG_ERROR, "[ERROR]", "Error performing yara scan on", path, err)
+			LogMessage(LOG_ERROR, "{ERROR}", "Error performing yara scan on", path, err)
 			return false
 		}
 	}
 
 	// output rules matchs
 	for i := 0; i < len(result); i++ {
-		LogMessage(LOG_INFO, "[ALERT]", "YARA match:")
-		LogMessage(LOG_INFO, " | path:", path)
-		LogMessage(LOG_INFO, " | rule namespace:", result[i].Namespace)
-		LogMessage(LOG_INFO, " | rule name:", result[i].Rule)
+		LogMessage(LOG_ALERT, "[ALERT]", "YARA match:")
+		LogMessage(LOG_ALERT, " | path:", path)
+		LogMessage(LOG_ALERT, " | rule namespace:", result[i].Namespace)
+		LogMessage(LOG_ALERT, " | rule name:", result[i].Rule)
 	}
 
 	return len(result) > 0

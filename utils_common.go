@@ -34,16 +34,28 @@ const (
 	DRIVE_RAMDISK     = 6
 )
 
-// PrintFastfinderLogo is a (useless) function displaying fastfinder logo as ascii art
-func PrintFastfinderLogo() {
-	fmt.Println("==================================================")
-	fmt.Println("  ___       __  ___  ___         __   ___  __     ")
-	fmt.Println(" |__   /\\  /__`  |  |__  | |\\ | |  \\ |__  |__) ")
-	fmt.Println(" |    /~~\\ .__/  |  |    | | \\| |__/ |___ |  \\ ")
-	fmt.Println("                                                  ")
-	fmt.Println("  2021-2022 | Jean-Pierre GARNIER | @codeyourweb  ")
-	fmt.Println("  https://github.com/codeyourweb/fastfinder       ")
-	fmt.Println("==================================================")
+// RenderFastfinderLogo is a (useless) function displaying fastfinder logo as ascii art
+func RenderFastfinderLogo() string {
+	txtLogo := "  ___       __  ___  ___         __   ___  __     " + LineBreak
+	txtLogo += " |__   /\\  /__`  |  |__  | |\\ | |  \\ |__  |__) " + LineBreak
+	txtLogo += " |    /~~\\ .__/  |  |    | | \\| |__/ |___ |  \\ " + LineBreak
+	txtLogo += "                                                  " + LineBreak
+	txtLogo += "  2021-2022 | Jean-Pierre GARNIER | @codeyourweb  " + LineBreak
+	txtLogo += "  https://github.com/codeyourweb/fastfinder       " + LineBreak
+	return txtLogo
+}
+
+func RenderFastfinderVersion() string {
+	return "Fastfinder version " + FASTFINDER_VERSION + " with embedded YARA version " + YARA_VERSION
+}
+
+func ExitProgram(code int, noWindow bool) {
+	if !noWindow {
+		LogMessage(LOG_EXIT, "Press Enter to exit")
+		fmt.Scanln()
+	}
+
+	os.Exit(code)
 }
 
 // GetEnvironmentVariables return a list of environment variables in []Env slice
@@ -66,14 +78,14 @@ func ListFilesRecursively(path string, excludedPaths []string) *[]string {
 
 	err := filepath.Walk(path, func(path string, f os.FileInfo, err error) error {
 		if err != nil {
-			LogMessage(LOG_ERROR, "[ERROR]", err)
+			LogMessage(LOG_ERROR, "{ERROR}", err)
 			return filepath.SkipDir
 		}
 
 		if !f.IsDir() {
 			for _, excludedPath := range excludedPaths {
 				if len(excludedPath) > 1 && strings.HasPrefix(path, excludedPath) && len(path) > len(excludedPath) {
-					LogMessage(LOG_INFO, "[INFO]", "Skipping dir", path)
+					LogMessage(LOG_INFO, "{INFO}", "Skipping dir", path)
 					return filepath.SkipDir
 				}
 			}
@@ -84,7 +96,7 @@ func ListFilesRecursively(path string, excludedPaths []string) *[]string {
 	})
 
 	if err != nil {
-		LogMessage(LOG_ERROR, "[ERROR]", err)
+		LogMessage(LOG_ERROR, "{ERROR}", err)
 	}
 
 	return &files
@@ -199,7 +211,7 @@ func FileSHA256Sum(path string) string {
 func RC4Cipher(content []byte, key string) []byte {
 	c, err := rc4.NewCipher([]byte(key))
 	if err != nil {
-		log.Fatal("[ERROR] ", err)
+		log.Fatal("{ERROR} ", err)
 	}
 
 	c.XORKeyStream(content, content)

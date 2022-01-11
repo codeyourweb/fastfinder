@@ -2,25 +2,49 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"log"
 	"os"
+	"strings"
 )
 
 const (
-	LOG_INFO  = 0
-	LOG_ERROR = -1
+	LOG_VERBOSE = 0
+	LOG_EXIT    = 1
+	LOG_ERROR   = 2
+	LOG_INFO    = 3
+	LOG_ALERT   = 4
 )
 
 // LogMessage output message to the specific standard / error output
 func LogMessage(logType int, logMessage ...interface{}) {
-	if logType == LOG_INFO {
-		log.SetOutput(os.Stdout)
-	} else {
-		log.SetOutput(os.Stderr)
+	aString := make([]string, len(logMessage))
+	for i, v := range logMessage {
+		aString[i] = fmt.Sprintf("%v", v)
 	}
+	message := strings.Join(aString, " ")
 
-	log.Println(logMessage...)
+	if UIactive {
+		if logType == LOG_INFO || logType == LOG_VERBOSE || logType == LOG_EXIT {
+			txtStdout.ScrollToEnd()
+			fmt.Fprintf(txtStdout, "%s\n", message)
+		} else if logType == LOG_ALERT {
+			txtMatchs.ScrollToEnd()
+			fmt.Fprintf(txtMatchs, "%s\n", message)
+		} else {
+			txtStderr.ScrollToEnd()
+			fmt.Fprintf(txtStderr, "%s\n", message)
+		}
+	} else {
+		if logType == LOG_ERROR {
+			log.SetOutput(os.Stderr)
+		} else {
+			log.SetOutput(os.Stdout)
+		}
+
+		log.Println(message)
+	}
 }
 
 // StdoutToLogFile copy the standard output flow to the specified file
@@ -34,7 +58,7 @@ func StdoutToLogFile(outLogPath string) {
 	multiWriter := io.MultiWriter(os.Stdout, f)
 	rd, wr, err := os.Pipe()
 	if err != nil {
-		LogMessage(LOG_ERROR, "[ERROR]", "Cannot output log to file", err)
+		LogMessage(LOG_ERROR, "{ERROR}", "Cannot output log to file", err)
 	}
 
 	os.Stdout = wr
@@ -59,7 +83,7 @@ func StderrToLogFile(outLogPath string) {
 	multiWriter := io.MultiWriter(os.Stderr, f)
 	rd, wr, err := os.Pipe()
 	if err != nil {
-		LogMessage(LOG_ERROR, "[ERROR]", "Cannot output log to file", err)
+		LogMessage(LOG_ERROR, "{ERROR}", "Cannot output log to file", err)
 	}
 
 	os.Stderr = wr

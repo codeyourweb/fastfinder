@@ -3,12 +3,12 @@
 package main
 
 import (
-	"log"
 	"bufio"
 	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"regexp"
@@ -55,12 +55,12 @@ func CheckCurrentUserPermissions() (admin bool, elevated bool) {
 	output, err := cmd.Output()
 
 	if err != nil {
-		log.Fatalf("[ERROR] Error finding current user privileges: %s", err)
+		log.Fatalf("{ERROR} Error finding current user privileges: %s", err)
 	}
 
 	i, err := strconv.Atoi(string(output[:len(output)-1]))
 	if err != nil {
-		log.Fatalf("[ERROR] Error finding current user privileges: %s", err)
+		log.Fatalf("{ERROR} Error finding current user privileges: %s", err)
 	}
 
 	return i == 0, i == 0
@@ -208,7 +208,7 @@ func IsUSBStorage(device string) bool {
 	out, err := exec.Command(cmd, args...).Output()
 
 	if err != nil {
-		LogMessage(LOG_ERROR, "[ERROR]", "Error checking device %s: %s", device, err)
+		LogMessage(LOG_ERROR, "{ERROR}", "Error checking device %s: %s", device, err)
 		return false
 	}
 
