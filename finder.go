@@ -41,13 +41,13 @@ func FindInFilesContent(files *[]string, patterns []string, rules *yara.Rules, h
 		ProgressBarStep()
 		b, err := ioutil.ReadFile(path)
 		if err != nil {
-			LogMessage(LOG_ERROR, "{ERROR}", "Unable to read file", path)
+			LogMessage(LOG_ERROR, "(ERROR)", "Unable to read file", path)
 			continue
 		}
 
 		// cancel analysis if file size is greater than maxScanFilesize
 		if len(b) > 1024*1024*maxScanFilesize {
-			LogMessage(LOG_ERROR, "{ERROR}", "File size is greater than "+string(maxScanFilesize)+"Mb, skipping", path)
+			LogMessage(LOG_ERROR, "(ERROR)", fmt.Sprintf("File %s size is greater than %dMb, skipping", path, maxScanFilesize))
 			continue
 		}
 
@@ -60,7 +60,7 @@ func FindInFilesContent(files *[]string, patterns []string, rules *yara.Rules, h
 		// handle file content and checksum match
 		for _, m := range CheckFileChecksumAndContent(path, b, hashList, patterns) {
 			if !Contains(matchingFiles, m) {
-				LogMessage(LOG_ALERT, "[ALERT]", "File content match on:", path)
+				LogMessage(LOG_ALERT, "(ALERT)", "File content match on:", path)
 				matchingFiles = append(matchingFiles, m)
 			}
 		}
@@ -68,12 +68,12 @@ func FindInFilesContent(files *[]string, patterns []string, rules *yara.Rules, h
 		// yara scan on file content
 		yaraResult, err := PerformYaraScan(&b, rules)
 		if err != nil {
-			LogMessage(LOG_ERROR, "{ERROR}", "Error performing yara scan on", path, err)
+			LogMessage(LOG_ERROR, "(ERROR)", "Error performing yara scan on", path, err)
 		}
 
 		// output yara match results
 		for i := 0; i < len(yaraResult); i++ {
-			LogMessage(LOG_ALERT, "[ALERT]", "YARA match:")
+			LogMessage(LOG_ALERT, "(ALERT)", "YARA match:")
 			LogMessage(LOG_ALERT, " | path:", path)
 			LogMessage(LOG_ALERT, " | rule namespace:", yaraResult[i].Namespace)
 			LogMessage(LOG_ALERT, " | rule name:", yaraResult[i].Rule)
@@ -83,28 +83,28 @@ func FindInFilesContent(files *[]string, patterns []string, rules *yara.Rules, h
 		if Contains([]string{"application/x-tar", "application/x-7z-compressed", "application/zip", "application/vnd.rar"}, filetype.MIME.Value) {
 			zr, err := zip.OpenReader(path)
 			if err != nil {
-				LogMessage(LOG_ERROR, "{ERROR}", "Cant't open archive file:", path)
+				LogMessage(LOG_ERROR, "(ERROR)", "Cant't open archive file:", path)
 				continue
 			}
 
 			for _, subFile := range zr.File {
 				fr, err := subFile.Open()
 				if err != nil {
-					LogMessage(LOG_ERROR, "{ERROR}", "Can't open archive file member for reading:", path, subFile.Name)
+					LogMessage(LOG_ERROR, "(ERROR)", "Can't open archive file member for reading:", path, subFile.Name)
 					continue
 				}
 				defer fr.Close()
 
 				body, err := ioutil.ReadAll(fr)
 				if err != nil {
-					LogMessage(LOG_ERROR, "{ERROR}", "Unable to read file archive member:", path, subFile.Name)
+					LogMessage(LOG_ERROR, "(ERROR)", "Unable to read file archive member:", path, subFile.Name)
 					continue
 				}
 
 				// handle file content and checksum match for each file in the archive
 				for _, m := range CheckFileChecksumAndContent(path, body, hashList, patterns) {
 					if !Contains(matchingFiles, m) {
-						LogMessage(LOG_ALERT, "[ALERT]", "File content match on:", path)
+						LogMessage(LOG_ALERT, "(ALERT)", "File content match on:", path)
 						matchingFiles = append(matchingFiles, m)
 					}
 				}
@@ -112,12 +112,12 @@ func FindInFilesContent(files *[]string, patterns []string, rules *yara.Rules, h
 				// yara scan
 				yaraResult, err := PerformYaraScan(&body, rules)
 				if err != nil {
-					LogMessage(LOG_ERROR, "{ERROR}", "Error performing yara scan on", path, err)
+					LogMessage(LOG_ERROR, "(ERROR)", "Error performing yara scan on", path, err)
 				}
 
 				// output yara match results
 				for i := 0; i < len(yaraResult); i++ {
-					LogMessage(LOG_ALERT, "[ALERT]", "YARA match:")
+					LogMessage(LOG_ALERT, "(ALERT)", "YARA match:")
 					LogMessage(LOG_ALERT, " | path:", path, "("+subFile.Name+")")
 					LogMessage(LOG_ALERT, " | rule namespace:", yaraResult[i].Namespace)
 					LogMessage(LOG_ALERT, " | rule name:", yaraResult[i].Rule)

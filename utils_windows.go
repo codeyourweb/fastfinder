@@ -3,7 +3,7 @@
 package main
 
 import (
-	"log"
+	"fmt"
 	"syscall"
 	"unsafe"
 
@@ -34,7 +34,7 @@ func CheckCurrentUserPermissions() (admin bool, elevated bool) {
 		0, 0, 0, 0, 0, 0,
 		&sid)
 	if err != nil {
-		log.Fatalf("{ERROR} SID Error: %s", err)
+		LogFatal(fmt.Sprintf("(ERROR) SID Error: %s", err))
 		return false, false
 	}
 	defer windows.FreeSid(sid)
@@ -42,7 +42,7 @@ func CheckCurrentUserPermissions() (admin bool, elevated bool) {
 
 	admin, err = token.IsMember(sid)
 	if err != nil {
-		log.Fatalf("{ERROR} Token Membership Error: %s", err)
+		LogFatal(fmt.Sprintf("(ERROR) Token Membership Error: %s", err))
 		return false, false
 	}
 

@@ -1,8 +1,8 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"regexp"
 	"strings"
@@ -57,17 +57,17 @@ func (c *Configuration) getConfiguration(configFile string) *Configuration {
 	if IsValidUrl(configFile) {
 		response, err := http.Get(configFile)
 		if err != nil {
-			log.Fatalf("Configuration file URL unreachable %v", err)
+			LogFatal(fmt.Sprintf("Configuration file URL unreachable %v", err))
 		}
 		yamlFile, err = ioutil.ReadAll(response.Body)
 		if err != nil {
-			log.Fatalf("Configuration file URL content unreadable %v", err)
+			LogFatal(fmt.Sprintf("Configuration file URL content unreadable %v", err))
 		}
 		response.Body.Close()
 	} else {
 		yamlFile, err = ioutil.ReadFile(configFile)
 		if err != nil {
-			log.Fatalf("Configuration file reading error %v ", err)
+			LogFatal(fmt.Sprintf("Configuration file reading error %v ", err))
 		}
 	}
 
@@ -77,7 +77,7 @@ func (c *Configuration) getConfiguration(configFile string) *Configuration {
 		// if yaml unmarshal fails, try to RC4 decrypt it
 		err = yaml.Unmarshal(RC4Cipher(yamlFile, BUILDER_RC4_KEY), c)
 		if err != nil {
-			log.Fatalf("Configuration file parsing error: %v", err)
+			LogFatal(fmt.Sprintf("Configuration file parsing error: %v", err))
 		}
 	}
 

@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"log"
 	"net/url"
 	"os"
 	"os/user"
@@ -56,6 +55,10 @@ func ExitProgram(code int, noWindow bool) {
 		fmt.Print("\n\n")
 	}
 
+	if loggingFile != nil {
+		loggingFile.Close()
+	}
+
 	os.Exit(code)
 }
 
@@ -79,14 +82,14 @@ func ListFilesRecursively(path string, excludedPaths []string) *[]string {
 
 	err := filepath.Walk(path, func(path string, f os.FileInfo, err error) error {
 		if err != nil {
-			LogMessage(LOG_ERROR, "{ERROR}", err)
+			LogMessage(LOG_ERROR, "(ERROR)", err)
 			return filepath.SkipDir
 		}
 
 		if !f.IsDir() {
 			for _, excludedPath := range excludedPaths {
 				if len(excludedPath) > 1 && strings.HasPrefix(path, excludedPath) && len(path) > len(excludedPath) {
-					LogMessage(LOG_INFO, "{INFO}", "Skipping dir", path)
+					LogMessage(LOG_INFO, "(INFO)", "Skipping dir", path)
 					return filepath.SkipDir
 				}
 			}
@@ -97,7 +100,7 @@ func ListFilesRecursively(path string, excludedPaths []string) *[]string {
 	})
 
 	if err != nil {
-		LogMessage(LOG_ERROR, "{ERROR}", err)
+		LogMessage(LOG_ERROR, "(ERROR)", err)
 	}
 
 	return &files
@@ -108,13 +111,13 @@ func FileCopy(src, dst string, base64Encode bool) {
 	dst += filepath.Base(src) + ".fastfinder"
 	srcFile, err := os.Open(src)
 	if err != nil {
-		log.Fatal(err)
+		LogFatal(fmt.Sprintf("%v", err))
 	}
 	defer srcFile.Close()
 
 	dstFile, err := os.Create(dst)
 	if err != nil {
-		log.Fatal(err)
+		LogFatal(fmt.Sprintf("%v", err))
 	}
 	defer dstFile.Close()
 
@@ -128,7 +131,7 @@ func FileCopy(src, dst string, base64Encode bool) {
 	}
 
 	if err != nil {
-		log.Fatal(err)
+		LogFatal(fmt.Sprintf("%v", err))
 	}
 }
 
@@ -212,7 +215,7 @@ func FileSHA256Sum(path string) string {
 func RC4Cipher(content []byte, key string) []byte {
 	c, err := rc4.NewCipher([]byte(key))
 	if err != nil {
-		log.Fatal("{ERROR} ", err)
+		LogFatal(fmt.Sprintf("(ERROR) %v", err))
 	}
 
 	c.XORKeyStream(content, content)

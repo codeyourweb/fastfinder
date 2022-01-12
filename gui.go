@@ -19,6 +19,10 @@ var txtStderr = tview.NewTextView()
 var UIselectedConfigPath string
 var UItmpConfigPath string
 
+func InitParamsWindow() {
+
+}
+
 // MainWindow display application UI
 func MainWindow() {
 	/*

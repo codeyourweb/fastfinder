@@ -4,9 +4,9 @@ import (
 	"archive/zip"
 	"bytes"
 	_ "embed"
+	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -24,7 +24,7 @@ func BuildSFX(configuration Configuration, outputSfxExe, logFileLocation string,
 
 	file, err := os.Create(outputSfxExe)
 	if err != nil {
-		log.Fatal("{ERROR} ", err)
+		LogFatal(fmt.Sprintf("(ERROR) %v", err))
 	}
 
 	defer file.Close()
@@ -42,18 +42,18 @@ func fastfinderResourcesCompress(configuration Configuration, logFileLocation st
 	// embed fastfinder.exe executable
 	zipFile, err := archive.Create("fastfinder.exe")
 	if err != nil {
-		log.Fatal("{ERROR} ", err)
+		LogFatal(fmt.Sprintf("(ERROR) %v", err))
 	}
 
 	fsFile, err := os.ReadFile(os.Args[0])
 	if err != nil {
-		log.Fatal("{ERROR} ", err)
+		LogFatal(fmt.Sprintf("(ERROR) %v", err))
 	}
 
 	r := bytes.NewReader(fsFile)
 	_, err = io.Copy(zipFile, r)
 	if err != nil {
-		log.Fatal("{ERROR} ", err)
+		LogFatal(fmt.Sprintf("(ERROR) %v", err))
 	}
 
 	// embed yara rules
@@ -78,13 +78,13 @@ func fastfinderResourcesCompress(configuration Configuration, logFileLocation st
 			fsFile, err = os.ReadFile(configuration.Input.Content.Yara[i])
 
 			if err != nil {
-				log.Fatal("{ERROR} ", err)
+				LogFatal(fmt.Sprintf("(ERROR) %v", err))
 			}
 		}
 
 		zipFile, err := archive.Create("fastfinder_resources/" + fileName)
 		if err != nil {
-			log.Fatal("{ERROR} ", err)
+			LogFatal(fmt.Sprintf("(ERROR) %v", err))
 		}
 
 		// cipher rules
@@ -95,7 +95,7 @@ func fastfinderResourcesCompress(configuration Configuration, logFileLocation st
 		r := bytes.NewReader(fsFile)
 		_, err = io.Copy(zipFile, r)
 		if err != nil {
-			log.Fatal("{ERROR} ", err)
+			LogFatal(fmt.Sprintf("(ERROR) %v", err))
 		}
 
 		configuration.Input.Content.Yara[i] = "./fastfinder_resources/" + fileName
@@ -105,11 +105,11 @@ func fastfinderResourcesCompress(configuration Configuration, logFileLocation st
 	// embed configuration file
 	zipFile, err = archive.Create("fastfinder_resources/configuration.yaml")
 	if err != nil {
-		log.Fatal("{ERROR} ", err)
+		LogFatal(fmt.Sprintf("(ERROR) %v", err))
 	}
 	d, err := yaml.Marshal(&configuration)
 	if err != nil {
-		log.Fatal("{ERROR} ", err)
+		LogFatal(fmt.Sprintf("(ERROR) %v", err))
 	}
 
 	// cipher configuration file
@@ -118,7 +118,7 @@ func fastfinderResourcesCompress(configuration Configuration, logFileLocation st
 	r = bytes.NewReader(d)
 	_, err = io.Copy(zipFile, r)
 	if err != nil {
-		log.Fatal("{ERROR} ", err)
+		LogFatal(fmt.Sprintf("(ERROR) %v", err))
 	}
 
 	// sfx exec instructions
@@ -148,7 +148,7 @@ func fastfinderResourcesCompress(configuration Configuration, logFileLocation st
 	err = archive.Close()
 
 	if err != nil {
-		log.Fatal("{ERROR} ", err)
+		LogFatal(fmt.Sprintf("(ERROR) %v", err))
 	}
 	return buffer
 }

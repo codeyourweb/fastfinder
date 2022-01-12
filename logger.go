@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"strings"
@@ -11,12 +9,16 @@ import (
 )
 
 const (
-	LOG_VERBOSE = 0
-	LOG_EXIT    = 1
-	LOG_ERROR   = 2
-	LOG_INFO    = 3
+	LOG_EXIT    = 0
+	LOG_VERBOSE = 1
+	LOG_INFO    = 2
+	LOG_ERROR   = 3
 	LOG_ALERT   = 4
 )
+
+var loggingVerbosity int = 3
+var loggingPath string = ""
+var loggingFile *os.File
 
 // LogMessage output message to the specific standard / error output
 func LogMessage(logType int, logMessage ...interface{}) {
@@ -49,54 +51,36 @@ func LogMessage(logType int, logMessage ...interface{}) {
 
 		log.Println(message)
 	}
+
+	if len(loggingPath) > 0 {
+		LogToFile(logType, message)
+	}
 }
 
-// StdoutToLogFile copy the standard output flow to the specified file
-func StdoutToLogFile(outLogPath string) {
-	f, err := os.OpenFile(outLogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0664)
-	if err != nil {
-		LogMessage(LOG_ERROR, "Error opening log file: ", err)
-		return
-	}
-
-	multiWriter := io.MultiWriter(os.Stdout, f)
-	rd, wr, err := os.Pipe()
-	if err != nil {
-		LogMessage(LOG_ERROR, "{ERROR}", "Cannot output log to file", err)
-	}
-
-	os.Stdout = wr
-
-	go func() {
-		scanner := bufio.NewScanner(rd)
-		for scanner.Scan() {
-			stdoutLine := scanner.Text()
-			multiWriter.Write([]byte(stdoutLine + LineBreak))
-		}
-	}()
+// LogFatal use LogMessage and exit program
+func LogFatal(message string) {
+	LogMessage(LOG_ERROR, message)
+	ExitProgram(1, !UIactive)
 }
 
-// StderrToLogFile copy the standard error flow to the specified file
-func StderrToLogFile(outLogPath string) {
-	f, err := os.OpenFile(outLogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0664)
-	if err != nil {
-		LogMessage(LOG_ERROR, "Error opening log file: ", err)
-		return
-	}
-
-	multiWriter := io.MultiWriter(os.Stderr, f)
-	rd, wr, err := os.Pipe()
-	if err != nil {
-		LogMessage(LOG_ERROR, "{ERROR}", "Cannot output log to file", err)
-	}
-
-	os.Stderr = wr
-
-	go func() {
-		scanner := bufio.NewScanner(rd)
-		for scanner.Scan() {
-			stdoutLine := scanner.Text()
-			multiWriter.Write([]byte(stdoutLine + LineBreak))
+// LogToFile copy output log flow to the specified file according to the desired loglevel
+func LogToFile(logType int, message string) {
+	var err error
+	if loggingFile == nil {
+		loggingFile, err = os.OpenFile(loggingPath, os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			loggingPath = ""
+			LogMessage(LOG_ERROR, "(ERROR)", "Unable to write log file")
+			ExitProgram(1, !UIactive)
 		}
-	}()
+	}
+
+	if logType == LOG_EXIT || logType >= loggingVerbosity {
+		if _, err := loggingFile.WriteString(message + "\n"); err != nil {
+			loggingPath = ""
+			LogMessage(LOG_ERROR, "(ERROR)", "Unable to write log file")
+			ExitProgram(1, !UIactive)
+		}
+	}
+
 }
