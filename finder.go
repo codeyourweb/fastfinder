@@ -13,6 +13,7 @@ import (
 	"github.com/dlclark/regexp2"
 	"github.com/h2non/filetype"
 	"github.com/h2non/filetype/types"
+	"github.com/hillu/go-yara/v4"
 )
 
 // PathsFinder try to match regular expressions in file paths slice
@@ -32,8 +33,9 @@ func PathsFinder(files *[]string, patterns []*regexp2.Regexp) *[]string {
 }
 
 // FindInFiles check for pattern or checksum match in files slice
-func FindInFiles(files *[]string, patterns []string, hashList []string, maxScanFilesize int, cleanMemoryIfFileGreaterThanSize int) *[]string {
+func FindInFilesContent(files *[]string, patterns []string, rules *yara.Rules, hashList []string, maxScanFilesize int, cleanMemoryIfFileGreaterThanSize int) *[]string {
 	var matchingFiles []string
+
 	InitProgressbar(int64(len(*files)))
 	for _, path := range *files {
 		ProgressBarStep()
@@ -43,9 +45,9 @@ func FindInFiles(files *[]string, patterns []string, hashList []string, maxScanF
 			continue
 		}
 
-		// cancel analysis if file size is greater than 2Gb
-		if len(b) > 1024*1024*2048 {
-			LogMessage(LOG_ERROR, "{ERROR}", "File size is greater than 2Gb, skipping", path)
+		// cancel analysis if file size is greater than maxScanFilesize
+		if len(b) > 1024*1024*maxScanFilesize {
+			LogMessage(LOG_ERROR, "{ERROR}", "File size is greater than "+string(maxScanFilesize)+"Mb, skipping", path)
 			continue
 		}
 
@@ -55,11 +57,26 @@ func FindInFiles(files *[]string, patterns []string, hashList []string, maxScanF
 			filetype = types.Unknown
 		}
 
+		// handle file content and checksum match
 		for _, m := range CheckFileChecksumAndContent(path, b, hashList, patterns) {
 			if !Contains(matchingFiles, m) {
 				LogMessage(LOG_ALERT, "[ALERT]", "File content match on:", path)
 				matchingFiles = append(matchingFiles, m)
 			}
+		}
+
+		// yara scan on file content
+		yaraResult, err := PerformYaraScan(&b, rules)
+		if err != nil {
+			LogMessage(LOG_ERROR, "{ERROR}", "Error performing yara scan on", path, err)
+		}
+
+		// output yara match results
+		for i := 0; i < len(yaraResult); i++ {
+			LogMessage(LOG_ALERT, "[ALERT]", "YARA match:")
+			LogMessage(LOG_ALERT, " | path:", path)
+			LogMessage(LOG_ALERT, " | rule namespace:", yaraResult[i].Namespace)
+			LogMessage(LOG_ALERT, " | rule name:", yaraResult[i].Rule)
 		}
 
 		// if file type is an archive, extract and calculate checksum for every file inside
@@ -84,18 +101,32 @@ func FindInFiles(files *[]string, patterns []string, hashList []string, maxScanF
 					continue
 				}
 
+				// handle file content and checksum match for each file in the archive
 				for _, m := range CheckFileChecksumAndContent(path, body, hashList, patterns) {
 					if !Contains(matchingFiles, m) {
 						LogMessage(LOG_ALERT, "[ALERT]", "File content match on:", path)
 						matchingFiles = append(matchingFiles, m)
 					}
 				}
-			}
 
+				// yara scan
+				yaraResult, err := PerformYaraScan(&body, rules)
+				if err != nil {
+					LogMessage(LOG_ERROR, "{ERROR}", "Error performing yara scan on", path, err)
+				}
+
+				// output yara match results
+				for i := 0; i < len(yaraResult); i++ {
+					LogMessage(LOG_ALERT, "[ALERT]", "YARA match:")
+					LogMessage(LOG_ALERT, " | path:", path, "("+subFile.Name+")")
+					LogMessage(LOG_ALERT, " | rule namespace:", yaraResult[i].Namespace)
+					LogMessage(LOG_ALERT, " | rule name:", yaraResult[i].Rule)
+				}
+			}
 		}
 
-		// cleaning memory if file size is greater than 512Mb
-		if len(b) > 1024*1024*512 {
+		// cleaning memory if file size is greater than cleanMemoryIfFileGreaterThanSize
+		if len(b) > 1024*1024*cleanMemoryIfFileGreaterThanSize {
 			debug.FreeOSMemory()
 		}
 	}

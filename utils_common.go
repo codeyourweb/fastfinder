@@ -51,8 +51,9 @@ func RenderFastfinderVersion() string {
 
 func ExitProgram(code int, noWindow bool) {
 	if !noWindow {
-		LogMessage(LOG_EXIT, "Press Enter to exit")
+		LogMessage(LOG_EXIT, "[yellow]Press Ctrl+C to exit")
 		fmt.Scanln()
+		fmt.Print("\n\n")
 	}
 
 	os.Exit(code)

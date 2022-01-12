@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 )
 
 const (
@@ -23,7 +24,9 @@ func LogMessage(logType int, logMessage ...interface{}) {
 	for i, v := range logMessage {
 		aString[i] = fmt.Sprintf("%v", v)
 	}
-	message := strings.Join(aString, " ")
+	currentTime := time.Now()
+
+	message := "[" + currentTime.Format("2006-01-02 15:04:05") + "] " + strings.Join(aString, " ")
 
 	if UIactive {
 		if logType == LOG_INFO || logType == LOG_VERBOSE || logType == LOG_EXIT {

@@ -202,21 +202,21 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pHideWindow
 	} else {
 		LogMessage(LOG_VERBOSE, "{INIT}", "Looking for the following drives:")
 		for _, p := range basePaths {
-			LogMessage(LOG_INFO, "  |", p)
+			LogMessage(LOG_INFO, " |", p)
 		}
 	}
 
 	if len(excludedPaths) > 0 {
 		LogMessage(LOG_VERBOSE, "{INFO}", "Excluding the following paths:")
 		for _, p := range excludedPaths {
-			LogMessage(LOG_INFO, "  |", p)
+			LogMessage(LOG_INFO, " |", p)
 		}
 	}
 
 	if len(config.Input.Path) > 0 {
 		LogMessage(LOG_VERBOSE, "{INIT}", "Looking for the following paths patterns:")
 		for _, p := range config.Input.Path {
-			LogMessage(LOG_INFO, "  |", p)
+			LogMessage(LOG_INFO, " |", p)
 		}
 	}
 
@@ -230,15 +230,15 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pHideWindow
 	for _, basePath := range basePaths {
 		LogMessage(LOG_VERBOSE, "{INFO}", "Enumerating files in", basePath)
 		var matchContent []string
-		var matchPattern []string
+		var matchPathPattern []string
 
 		// files listing
-		files := *ListFilesRecursively(basePath, excludedPaths)
+		filesEnumeration := ListFilesRecursively(basePath, excludedPaths)
 		if runtime.GOOS != "windows" {
 			excludedPaths = append(excludedPaths, basePath)
 		}
 
-		// match file path
+		// check for files matching path patterns
 		if len(config.Input.Path) > 0 {
 			LogMessage(LOG_VERBOSE, "{INFO}", "Checking for paths matchs in", basePath)
 			var pathRegexPatterns []*regexp2.Regexp
@@ -246,78 +246,58 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pHideWindow
 				re := regexp2.MustCompile(pattern, regexp2.IgnoreCase)
 				pathRegexPatterns = append(pathRegexPatterns, re)
 			}
-			matchPattern = *PathsFinder(&files, pathRegexPatterns)
+			matchPathPattern = *PathsFinder(filesEnumeration, pathRegexPatterns)
 			if !config.Options.ContentMatchDependsOnPathMatch {
-				for i := 0; i < len(matchPattern); i++ {
-					LogMessage(LOG_ALERT, "[ALERT]", "File path match on:", matchPattern[i])
+				for i := 0; i < len(matchPathPattern); i++ {
+					LogMessage(LOG_ALERT, "[ALERT]", "File path match on:", matchPathPattern[i])
 				}
 			}
-
-		} else {
-			matchPattern = files
 		}
 
-		// match content - contains
-		if len(config.Input.Content.Grep) > 0 || len(config.Input.Content.Checksum) > 0 {
-			LogMessage(LOG_VERBOSE, "{INFO}", "Checking for content and checksum matchs in", basePath)
-			if config.Options.ContentMatchDependsOnPathMatch {
-				matchContent = *FindInFiles(&matchPattern, config.Input.Content.Grep, config.Input.Content.Checksum, config.AdvancedParameters.MaxScanFilesize, config.AdvancedParameters.CleanMemoryIfFileGreaterThanSize)
-			} else {
-				matchContent = *FindInFiles(&files, config.Input.Content.Grep, config.Input.Content.Checksum, config.AdvancedParameters.MaxScanFilesize, config.AdvancedParameters.CleanMemoryIfFileGreaterThanSize)
-			}
-		}
+		// check for file matching content, checksum and yara rules
+		if len(config.Input.Content.Grep) > 0 || len(config.Input.Content.Checksum) > 0 || len(config.Input.Content.Yara) > 0 {
+			LogMessage(LOG_VERBOSE, "{INFO}", "Checking for content, checksum and YARA rules matchs in", basePath)
 
-		// match content - yara
-		if len(config.Input.Content.Yara) > 0 {
-			if (len(matchPattern) == 0 && config.Options.ContentMatchDependsOnPathMatch) || (len(files) == 0 && !config.Options.ContentMatchDependsOnPathMatch) {
-				LogMessage(LOG_VERBOSE, "{INFO}", "Neither path nor pattern match. no file to scan with YARA.", basePath)
-			} else {
-				LogMessage(LOG_VERBOSE, "{INFO}", "Checking for yara matchs in", basePath)
-				if config.Options.ContentMatchDependsOnPathMatch {
-					InitProgressbar(int64(len(matchPattern)))
-					for i := 0; i < len(matchPattern); i++ {
-						ProgressBarStep()
-						if FileAnalyzeYaraMatch(matchPattern[i], rules) && (len(matchContent) == 0 || !Contains(matchContent, matchPattern[i])) {
-							matchContent = append(matchContent, matchPattern[i])
-						}
-					}
+			if config.Options.ContentMatchDependsOnPathMatch && len(config.Input.Path) > 0 {
+				if len(matchPathPattern) == 0 {
+					LogMessage(LOG_VERBOSE, "{INFO}", "Neither path nor pattern match. no file to scan with YARA.", basePath)
 				} else {
-					InitProgressbar(int64(len(files)))
-					for i := 0; i < len(files); i++ {
-						ProgressBarStep()
-						if FileAnalyzeYaraMatch(files[i], rules) && (len(matchContent) == 0 || !Contains(matchContent, files[i])) {
-							matchContent = append(matchContent, files[i])
-						}
-					}
+					matchContent = *FindInFilesContent(&matchPathPattern, config.Input.Content.Grep, rules, config.Input.Content.Checksum, config.AdvancedParameters.MaxScanFilesize, config.AdvancedParameters.CleanMemoryIfFileGreaterThanSize)
 				}
-			}
-		}
-
-		// also handle result if only match path pattern is set
-		if len(config.Input.Content.Grep) == 0 && len(config.Input.Content.Checksum) == 0 && len(config.Input.Content.Yara) == 0 {
-			matchContent = matchPattern
-		}
-
-		// handle false condition on ContentMatchDependsOnPathMatch options
-		if len(config.Input.Path) > 0 && !config.Options.ContentMatchDependsOnPathMatch {
-			for i := 0; i < len(matchPattern); i++ {
-				if !Contains(matchContent, matchPattern[i]) {
-					matchContent = append(matchContent, matchPattern[i])
-				}
+			} else {
+				matchContent = *FindInFilesContent(filesEnumeration, config.Input.Content.Grep, rules, config.Input.Content.Checksum, config.AdvancedParameters.MaxScanFilesize, config.AdvancedParameters.CleanMemoryIfFileGreaterThanSize)
 			}
 		}
 
 		// listing and copy matching files
 		LogMessage(LOG_INFO, "{INFO}", "scan finished in", basePath)
-		if len(matchContent) > 0 {
-			LogMessage(LOG_INFO, "{INFO}", "Matching files: ")
-			for i := 0; i < len(matchContent); i++ {
-				LogMessage(LOG_INFO, "  |", matchContent[i])
+		if (len(matchPathPattern) > 0 && !config.Options.ContentMatchDependsOnPathMatch) || len(matchContent) > 0 {
+			LogMessage(LOG_ALERT, "{INFO}", "Matching files: ")
+			// output pattern matchs
+			if !config.Options.ContentMatchDependsOnPathMatch {
+				for i := 0; i < len(matchPathPattern); i++ {
+					LogMessage(LOG_ALERT, " |", matchContent[i])
+				}
 			}
 
+			// output content, checksum and yara match
+			for i := 0; i < len(matchContent); i++ {
+				LogMessage(LOG_ALERT, " |", matchContent[i])
+			}
+
+			// copy file matchs
 			if config.Output.CopyMatchingFiles {
 				LogMessage(LOG_INFO, "{INFO}", "Copy all matching files")
-				InitProgressbar(int64(len(matchPattern)))
+				if !config.Options.ContentMatchDependsOnPathMatch {
+					InitProgressbar(int64(len(matchPathPattern)) + int64(len(matchContent)))
+					for i := 0; i < len(matchPathPattern); i++ {
+						ProgressBarStep()
+						FileCopy(matchPathPattern[i], config.Output.FilesCopyPath, config.Output.Base64Files)
+					}
+				} else {
+					InitProgressbar(int64(len(matchContent)))
+				}
+
 				for i := 0; i < len(matchContent); i++ {
 					ProgressBarStep()
 					FileCopy(matchContent[i], config.Output.FilesCopyPath, config.Output.Base64Files)

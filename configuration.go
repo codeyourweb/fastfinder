@@ -91,6 +91,15 @@ func (c *Configuration) getConfiguration(configFile string) *Configuration {
 		c.Output.FilesCopyPath = ""
 	}
 
+	// check for missing advanced parameters
+	if c.AdvancedParameters.MaxScanFilesize == 0 {
+		c.AdvancedParameters.MaxScanFilesize = 2048
+	}
+
+	if c.AdvancedParameters.CleanMemoryIfFileGreaterThanSize == 0 {
+		c.AdvancedParameters.CleanMemoryIfFileGreaterThanSize = 512
+	}
+
 	// parsing input paths
 	environmentVariables := GetEnvironmentVariables()
 
