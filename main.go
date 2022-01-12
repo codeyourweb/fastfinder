@@ -50,7 +50,7 @@ func main() {
 	if *pFinderVersion {
 		LogMessage(LOG_INFO, RenderFastfinderVersion())
 		if !Contains(os.Args, "-c") && !Contains(os.Args, "--configuration") {
-			ExitProgram(0, *pHideWindow)
+			ExitProgram(0, *pHideWindow || *pDisableAdvUI)
 		}
 	}
 
@@ -81,11 +81,11 @@ func main() {
 	}*/
 
 	// init UI
-	if !*pHideWindow {
-		go MainFastfinderRoutine(config, *pConfigPath, *pHideWindow, *pSfxPath, *pOutLogPath)
+	if !*pHideWindow && !*pDisableAdvUI {
+		go MainFastfinderRoutine(config, *pConfigPath, *pHideWindow || *pDisableAdvUI, *pSfxPath, *pOutLogPath)
 		MainWindow()
 	} else {
-		MainFastfinderRoutine(config, *pConfigPath, *pHideWindow, *pSfxPath, *pOutLogPath)
+		MainFastfinderRoutine(config, *pConfigPath, *pHideWindow || *pDisableAdvUI, *pSfxPath, *pOutLogPath)
 	}
 
 }

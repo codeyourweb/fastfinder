@@ -24,11 +24,12 @@ func LogMessage(logType int, logMessage ...interface{}) {
 	for i, v := range logMessage {
 		aString[i] = fmt.Sprintf("%v", v)
 	}
-	currentTime := time.Now()
 
-	message := "[" + currentTime.Format("2006-01-02 15:04:05") + "] " + strings.Join(aString, " ")
+	message := strings.Join(aString, " ")
 
 	if UIactive {
+		currentTime := time.Now()
+		message = "[" + currentTime.Format("2006-01-02 15:04:05") + "] " + message
 		if logType == LOG_INFO || logType == LOG_VERBOSE || logType == LOG_EXIT {
 			txtStdout.ScrollToEnd()
 			fmt.Fprintf(txtStdout, "%s\n", message)
