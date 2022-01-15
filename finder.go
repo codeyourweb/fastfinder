@@ -69,6 +69,7 @@ func FindInFilesContent(files *[]string, patterns []string, rules *yara.Rules, h
 		yaraResult, err := PerformYaraScan(&b, rules)
 		if err != nil {
 			LogMessage(LOG_ERROR, "(ERROR)", "Error performing yara scan on", path, err)
+			continue
 		}
 
 		// output yara match results

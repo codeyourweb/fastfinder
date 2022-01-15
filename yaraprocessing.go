@@ -76,7 +76,31 @@ func LoadYaraRules(path []string, rc4key string) (compiler *yara.Compiler, err e
 		return nil, fmt.Errorf("failed to initialize YARA compiler: %s", err.Error())
 	}
 
+	var rulePaths []string
+
 	for _, dir := range path {
+		LogMessage(LOG_INFO, "Searching for YARA rules in", dir)
+		dir = strings.TrimSpace(dir)
+
+		fileInfo, err := os.Stat(dir)
+		if err != nil {
+			LogMessage(LOG_ERROR, "YARA file not found", dir, err)
+			continue
+		}
+
+		if fileInfo.IsDir() {
+			paths, err := RetrivesFilesFromUserPath(dir, true, []string{".yar", ".yara"}, false)
+			rulePaths = append(rulePaths, paths...)
+			if err != nil {
+				LogMessage(LOG_ERROR, "YARA file retrieve error found", dir, err)
+				continue
+			}
+		} else {
+			rulePaths = append(rulePaths, dir)
+		}
+	}
+
+	for _, dir := range rulePaths {
 		var f []byte
 		var err error
 
@@ -86,16 +110,19 @@ func LoadYaraRules(path []string, rc4key string) (compiler *yara.Compiler, err e
 			response, err := http.Get(dir)
 			if err != nil {
 				LogMessage(LOG_ERROR, "YARA file URL unreachable", dir, err)
+				continue
 			}
 			f, err = ioutil.ReadAll(response.Body)
 			if err != nil {
 				LogMessage(LOG_ERROR, "YARA file URL content unreadable", dir, err)
+				continue
 			}
 			response.Body.Close()
 		} else {
 			f, err = os.ReadFile(dir)
 			if err != nil {
 				LogMessage(LOG_ERROR, "(ERROR)", "Could not read rule file ", dir, err)
+				continue
 			}
 		}
 
@@ -106,6 +133,7 @@ func LoadYaraRules(path []string, rc4key string) (compiler *yara.Compiler, err e
 		namespace := filepath.Base(dir)[:len(filepath.Base(dir))-4]
 		if err = compiler.AddString(string(f), namespace); err != nil {
 			LogMessage(LOG_ERROR, "(ERROR)", "Could not load rule file ", dir, err)
+			continue
 		}
 	}
 

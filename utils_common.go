@@ -4,6 +4,7 @@ import (
 	"crypto/rc4"
 	"crypto/sha256"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -44,10 +45,12 @@ func RenderFastfinderLogo() string {
 	return txtLogo
 }
 
+// RenderFastfinderVersion returns program and YARA version
 func RenderFastfinderVersion() string {
 	return "Fastfinder version " + FASTFINDER_VERSION + " with embedded YARA version " + YARA_VERSION
 }
 
+// ExitProgram close file log handles and exit the program
 func ExitProgram(code int, noWindow bool) {
 	if !noWindow {
 		message := "Press Ctrl+C to exit"
@@ -78,6 +81,50 @@ func GetEnvironmentVariables() (environmentVariables []Env) {
 	}
 
 	return environmentVariables
+}
+
+// RetrivesFilesFromUserPath return a []string of available files from specified path (includeFileExtensions is available only if listFiles is true)
+func RetrivesFilesFromUserPath(path string, listFiles bool, includeFileExtensions []string, recursive bool) ([]string, error) {
+	var p []string
+
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return []string{}, errors.New("Input file not found")
+	}
+
+	if !info.IsDir() {
+		p = append(p, path)
+	} else {
+		if !recursive {
+			files, err := os.ReadDir(path)
+			if err != nil {
+				return []string{}, err
+			}
+			for _, f := range files {
+				if !(f.IsDir() == listFiles) && (len(includeFileExtensions) == 0 || Contains(includeFileExtensions, filepath.Ext(f.Name()))) {
+					p = append(p, path+string(os.PathSeparator)+f.Name())
+				}
+			}
+		} else {
+			err := filepath.Walk(path, func(walk string, info os.FileInfo, err error) error {
+				if err != nil {
+					LogMessage(LOG_ERROR, "(ERROR)", err)
+				}
+
+				if err == nil && !(info.IsDir() == listFiles) && (len(includeFileExtensions) == 0 || Contains(includeFileExtensions, filepath.Ext(walk))) {
+					p = append(p, walk)
+				}
+
+				return nil
+			})
+
+			if err != nil {
+				LogMessage(LOG_ERROR, "(ERROR)", err)
+			}
+		}
+	}
+
+	return p, nil
 }
 
 // ListFilesRecursively returns a list of files in the specified path and its subdirectories
