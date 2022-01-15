@@ -129,7 +129,7 @@ func fastfinderResourcesCompress(configuration Configuration, logLevel int, logF
 	// sfx exec instructions
 	var sfxcomment = "the comment below contains sfx script commands\r\n\r\n" +
 		"Path=" + tempFolder + "\r\n" +
-		"Setup=" + exeName + " -c " + tempFolder + "/fastfinder_resources/configuration.yaml"
+		"Setup=" + exeName + " -c " + "fastfinder_resources/configuration.yaml"
 
 	// propagate loglevel param
 	sfxcomment += fmt.Sprintf(" -v %d", logLevel)
