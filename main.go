@@ -18,6 +18,7 @@ import (
 	"github.com/akamensky/argparse"
 	"github.com/dlclark/regexp2"
 	"github.com/hillu/go-yara/v4"
+	"github.com/rivo/tview"
 )
 
 const FASTFINDER_VERSION = "2.0.0b"
@@ -30,15 +31,21 @@ func main() {
 	pConfigPath := parser.String("c", "configuration", &argparse.Options{Required: false, Default: "", Help: "Fastfind configuration file"})
 	pSfxPath := parser.String("b", "build", &argparse.Options{Required: false, Help: "Output a standalone package with configuration and rules in a single binary"})
 	pOutLogPath := parser.String("o", "output", &argparse.Options{Required: false, Help: "Save fastfinder logs in the specified file"})
-	pHideWindow := parser.Flag("n", "nowindow", &argparse.Options{Required: false, Help: "Hide fastfinder window"})
-	pDisableAdvUI := parser.Flag("u", "nouserinterface", &argparse.Options{Required: false, Help: "Hide advanced user interface"})
-	pLogVerbosity := parser.Int("l", "loglevel", &argparse.Options{Required: false, Default: 3, Help: "File log verbosity \n\t\t\t\t | 4: Only alert\n\t\t\t\t | 3: Alert and error\n\t\t\t\t | 2: Basic informations\n\t\t\t\t | 1: Full verbosity)\n\t\t\t\t"})
-	pFinderVersion := parser.Flag("v", "version", &argparse.Options{Required: false, Help: "Display fastfinder version"})
+	pHideWindow := parser.Flag("n", "no-window", &argparse.Options{Required: false, Help: "Hide fastfinder window"})
+	pDisableAdvUI := parser.Flag("u", "no-userinterface", &argparse.Options{Required: false, Help: "Hide advanced user interface"})
+	pLogVerbosity := parser.Int("v", "verbosity", &argparse.Options{Required: false, Default: 3, Help: "File log verbosity \n\t\t\t\t | 4: Only alert\n\t\t\t\t | 3: Alert and errors\n\t\t\t\t | 2: Alerts,errors and I/O operations\n\t\t\t\t | 1: Full verbosity)\n\t\t\t\t"})
 
 	// handle argument parsing error
 	err := parser.Parse(os.Args)
 	if err != nil {
 		log.Fatal(parser.Usage(err))
+	}
+
+	// enable advanced UI
+	if *pDisableAdvUI || *pHideWindow || len(*pSfxPath) > 0 {
+		UIactive = false
+	} else {
+		UIapp = tview.NewApplication()
 	}
 
 	// display open file dialog when config file empty
@@ -47,23 +54,10 @@ func main() {
 		*pConfigPath = UIselectedConfigPath
 	}
 
-	// enable advanced UI
-	if *pDisableAdvUI || *pHideWindow || len(*pSfxPath) > 0 {
-		UIactive = false
-	}
-
 	// check for log path validity
 	if len(*pOutLogPath) > 0 {
 		if strings.Contains(*pOutLogPath, " ") {
 			LogFatal("Log file path cannot contain spaces")
-		}
-	}
-
-	// display fastfinder version
-	if *pFinderVersion {
-		LogMessage(LOG_INFO, RenderFastfinderVersion())
-		if !Contains(os.Args, "-c") && !Contains(os.Args, "--configuration") {
-			ExitProgram(0, !UIactive)
 		}
 	}
 
@@ -92,7 +86,7 @@ func main() {
 		loggingVerbosity = *pLogVerbosity
 	}
 
-	// init UI
+	// run app
 	if UIactive {
 		go MainFastfinderRoutine(config, *pConfigPath, *pDisableAdvUI, *pHideWindow, *pSfxPath, *pOutLogPath, *pLogVerbosity)
 		MainWindow()
@@ -107,11 +101,6 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pNoAdvUI bo
 	var compiler *yara.Compiler
 	var rules *yara.Rules
 	var err error
-
-	// check for advanced UI
-	if pNoAdvUI {
-		UIapp.Stop()
-	}
 
 	// check for input configuration
 	if len(config.Input.Path) == 0 && len(config.Input.Content.Grep) == 0 && len(config.Input.Content.Yara) == 0 {

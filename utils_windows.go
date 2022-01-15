@@ -13,6 +13,7 @@ import (
 
 //go:embed resources/windows_sfx.exe
 var sfxBinary []byte
+var tempFolder = "%TEMP%"
 
 const LineBreak = "\r\n"
 

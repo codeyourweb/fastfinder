@@ -128,11 +128,11 @@ func fastfinderResourcesCompress(configuration Configuration, logLevel int, logF
 
 	// sfx exec instructions
 	var sfxcomment = "the comment below contains sfx script commands\r\n\r\n" +
-		"Path=%TEMP%\r\n" +
-		"Setup=./" + exeName + " -c fastfinder_resources/configuration.yaml"
+		"Path=" + tempFolder + "\r\n" +
+		"Setup=" + exeName + " -c " + tempFolder + "/fastfinder_resources/configuration.yaml"
 
 	// propagate loglevel param
-	sfxcomment += fmt.Sprintf(" -l %d", logLevel)
+	sfxcomment += fmt.Sprintf(" -v %d", logLevel)
 
 	// propagage advanced UI param
 	if noAdvUI {
@@ -145,7 +145,7 @@ func fastfinderResourcesCompress(configuration Configuration, logLevel int, logF
 		sfxcomment += fmt.Sprintf(" -o %s", logFileLocation)
 	}
 
-	if hideWindow {
+	if hideWindow && runtime.GOOS == "windows" {
 		sfxcomment += " -n"
 		sfxcomment += "\r\n" +
 			"Silent=1"

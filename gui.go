@@ -13,7 +13,7 @@ import (
 
 var UIactive = true
 var AppStarted = false
-var UIapp = tview.NewApplication()
+var UIapp *tview.Application
 var txtMatchs = tview.NewTextView()
 var txtStdout = tview.NewTextView()
 var txtStderr = tview.NewTextView()
@@ -193,7 +193,9 @@ func OpenFileDialog() {
 	grid.AddItem(treeView, 1, 0, 1, 1, 0, 0, true)
 	grid.AddItem(textPreview, 1, 1, 1, 1, 0, 0, false)
 
+	AppStarted = true
 	if err := UIapp.SetRoot(grid, true).SetFocus(treeView).Run(); err != nil {
 		UIapp.Stop()
+		AppStarted = false
 	}
 }

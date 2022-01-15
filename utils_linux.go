@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"regexp"
@@ -21,6 +20,7 @@ import (
 
 //go:embed resources/linux_sfx.elf
 var sfxBinary []byte
+var tempFolder = "/tmp"
 
 const LineBreak = "\n"
 
