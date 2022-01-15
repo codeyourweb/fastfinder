@@ -29,7 +29,7 @@ func LogMessage(logType int, logMessage ...interface{}) {
 
 	message := strings.Join(aString, " ")
 
-	if UIactive {
+	if UIactive && AppStarted {
 		currentTime := time.Now()
 		message = "[" + currentTime.Format("2006-01-02 15:04:05") + "] " + message
 		if logType == LOG_INFO || logType == LOG_VERBOSE || logType == LOG_EXIT {

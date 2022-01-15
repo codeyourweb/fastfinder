@@ -52,6 +52,13 @@ func main() {
 		UIactive = false
 	}
 
+	// check for log path validity
+	if len(*pOutLogPath) > 0 {
+		if strings.Contains(*pOutLogPath, " ") {
+			LogFatal("Log file path cannot contain spaces")
+		}
+	}
+
 	// display fastfinder version
 	if *pFinderVersion {
 		LogMessage(LOG_INFO, RenderFastfinderVersion())
@@ -87,19 +94,24 @@ func main() {
 
 	// init UI
 	if UIactive {
-		go MainFastfinderRoutine(config, *pConfigPath, *pHideWindow, *pSfxPath, *pOutLogPath)
+		go MainFastfinderRoutine(config, *pConfigPath, *pDisableAdvUI, *pHideWindow, *pSfxPath, *pOutLogPath, *pLogVerbosity)
 		MainWindow()
 	} else {
-		LogMessage(LOG_INFO, "================================================"+LineBreak+RenderFastfinderLogo()+"================================================"+LineBreak)
-		MainFastfinderRoutine(config, *pConfigPath, *pHideWindow, *pSfxPath, *pOutLogPath)
+		LogMessage(LOG_INFO, LineBreak+"================================================"+LineBreak+RenderFastfinderLogo()+"================================================"+LineBreak)
+		MainFastfinderRoutine(config, *pConfigPath, *pDisableAdvUI, *pHideWindow, *pSfxPath, *pOutLogPath, *pLogVerbosity)
 	}
 
 }
 
-func MainFastfinderRoutine(config Configuration, pConfigPath string, pHideWindow bool, pSfxPath string, pOutLogPath string) {
+func MainFastfinderRoutine(config Configuration, pConfigPath string, pNoAdvUI bool, pHideWindow bool, pSfxPath string, pOutLogPath string, pLoglevel int) {
 	var compiler *yara.Compiler
 	var rules *yara.Rules
 	var err error
+
+	// check for advanced UI
+	if pNoAdvUI {
+		UIapp.Stop()
+	}
 
 	// check for input configuration
 	if len(config.Input.Path) == 0 && len(config.Input.Content.Grep) == 0 && len(config.Input.Content.Yara) == 0 {
@@ -109,25 +121,21 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pHideWindow
 
 	// sfx building option
 	if len(pSfxPath) > 0 {
-		if runtime.GOOS != "windows" {
-			LogMessage(LOG_ERROR, "(ERROR)", "Standalone package can be built only on Windows")
-			ExitProgram(1, !UIactive)
-		}
-		BuildSFX(config, pSfxPath, pOutLogPath, pHideWindow)
+		BuildSFX(config, pSfxPath, pLoglevel, pOutLogPath, pNoAdvUI, pHideWindow)
 		LogMessage(LOG_INFO, "(INFO)", "Fastfinder package generated successfully at", pSfxPath)
 		ExitProgram(0, !UIactive)
 	}
 
 	// fastfinder init
-	LogMessage(LOG_INFO, "{INIT}", "Fastfinder v"+FASTFINDER_VERSION+" with embedded YARA v"+YARA_VERSION)
-	LogMessage(LOG_INFO, "{INIT}", "OS:", runtime.GOOS, "Arch:", runtime.GOARCH)
-	LogMessage(LOG_INFO, "{INIT}", "Hostname:", GetHostname())
-	LogMessage(LOG_INFO, "{INIT}", "User:", GetUsername())
-	LogMessage(LOG_INFO, "{INIT}", "Current directory:", GetCurrentDirectory())
-	LogMessage(LOG_INFO, "{INIT}", "Max file size scan:", fmt.Sprintf("%dMB", config.AdvancedParameters.MaxScanFilesize))
-	LogMessage(LOG_INFO, "{INIT}", "Config file:", pConfigPath)
-	LogMessage(LOG_INFO, "{INIT}", "Fastfinder executable SHA256 checksum:", FileSHA256Sum(os.Args[0]))
-	LogMessage(LOG_INFO, "{INIT}", "Configuration file SHA256 checksum:", FileSHA256Sum(pConfigPath))
+	LogMessage(LOG_INFO, "(INIT)", "Fastfinder v"+FASTFINDER_VERSION+" with embedded YARA v"+YARA_VERSION)
+	LogMessage(LOG_INFO, "(INIT)", "OS:", runtime.GOOS, "Arch:", runtime.GOARCH)
+	LogMessage(LOG_INFO, "(INIT)", "Hostname:", GetHostname())
+	LogMessage(LOG_INFO, "(INIT)", "User:", GetUsername())
+	LogMessage(LOG_INFO, "(INIT)", "Current directory:", GetCurrentDirectory())
+	LogMessage(LOG_INFO, "(INIT)", "Max file size scan:", fmt.Sprintf("%dMB", config.AdvancedParameters.MaxScanFilesize))
+	LogMessage(LOG_INFO, "(INIT)", "Config file:", pConfigPath)
+	LogMessage(LOG_INFO, "(INIT)", "Fastfinder executable SHA256 checksum:", FileSHA256Sum(os.Args[0]))
+	LogMessage(LOG_INFO, "(INIT)", "Configuration file SHA256 checksum:", FileSHA256Sum(pConfigPath))
 
 	if len(pSfxPath) == 0 {
 		// create mutex
@@ -148,7 +156,7 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pHideWindow
 
 	// if yara rules mentionned - compile them
 	if len(config.Input.Content.Yara) > 0 {
-		LogMessage(LOG_VERBOSE, "{INIT}", "Compiling Yara rules")
+		LogMessage(LOG_VERBOSE, "(INIT)", "Compiling Yara rules")
 		compiler, err = LoadYaraRules(config.Input.Content.Yara, config.AdvancedParameters.YaraRC4Key)
 		if err != nil {
 			LogMessage(LOG_ERROR, err)
@@ -161,14 +169,14 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pHideWindow
 			ExitProgram(1, !UIactive)
 		}
 
-		LogMessage(LOG_VERBOSE, "{INIT}", len(rules.GetRules()), "YARA rules compiled")
+		LogMessage(LOG_VERBOSE, "(INIT)", len(rules.GetRules()), "YARA rules compiled")
 		for _, r := range rules.GetRules() {
 			LogMessage(LOG_INFO, " | rule:", r.Identifier())
 		}
 	}
 
 	// drives enumeration
-	LogMessage(LOG_VERBOSE, "{INIT}", "Enumerating drives")
+	LogMessage(LOG_VERBOSE, "(INIT)", "Enumerating drives")
 	var basePaths []string
 	drives, excludedPaths := EnumLogicalDrives()
 
@@ -206,7 +214,7 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pHideWindow
 		LogMessage(LOG_ERROR, "(ERROR)", "No drive corresponding to your configuration drive type")
 		ExitProgram(1, !UIactive)
 	} else {
-		LogMessage(LOG_VERBOSE, "{INIT}", "Looking for the following drives:")
+		LogMessage(LOG_VERBOSE, "(INIT)", "Looking for the following drives:")
 		for _, p := range basePaths {
 			LogMessage(LOG_INFO, " |", p)
 		}
@@ -220,7 +228,7 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pHideWindow
 	}
 
 	if len(config.Input.Path) > 0 {
-		LogMessage(LOG_VERBOSE, "{INIT}", "Looking for the following paths patterns:")
+		LogMessage(LOG_VERBOSE, "(INIT)", "Looking for the following paths patterns:")
 		for _, p := range config.Input.Path {
 			LogMessage(LOG_INFO, " |", p)
 		}

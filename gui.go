@@ -12,16 +12,13 @@ import (
 )
 
 var UIactive = true
+var AppStarted = false
 var UIapp = tview.NewApplication()
 var txtMatchs = tview.NewTextView()
 var txtStdout = tview.NewTextView()
 var txtStderr = tview.NewTextView()
 var UIselectedConfigPath string
 var UItmpConfigPath string
-
-func InitParamsWindow() {
-
-}
 
 // MainWindow display application UI
 func MainWindow() {
@@ -75,8 +72,10 @@ func MainWindow() {
 	grid.AddItem(txtStderr, 1, 0, 1, 1, 0, 0, false)
 	grid.AddItem(txtStdout, 2, 0, 1, 2, 0, 0, false)
 
+	AppStarted = true
 	if err := UIapp.SetRoot(grid, true).SetFocus(txtMatchs).Run(); err != nil {
 		UIapp.Stop()
+		AppStarted = false
 	}
 }
 
@@ -85,7 +84,7 @@ func OpenFileDialog() {
 	/*
 	 * TEXTVIEW : Dialog title
 	 */
-	lblDialog := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetText("Please select a yaml configuration file")
+	lblDialog := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetText("Fastfinder : Please select a yaml configuration file")
 
 	/*
 	 * TEXTVIEW : File preview

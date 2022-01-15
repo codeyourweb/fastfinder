@@ -3,12 +3,16 @@
 package main
 
 import (
+	_ "embed"
 	"fmt"
 	"syscall"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
 )
+
+//go:embed resources/windows_sfx.exe
+var sfxBinary []byte
 
 const LineBreak = "\r\n"
 

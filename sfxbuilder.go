@@ -3,24 +3,22 @@ package main
 import (
 	"archive/zip"
 	"bytes"
-	_ "embed"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
 
-//go:embed resources/winrar_sfx.exe
-var sfxBinary []byte
-
 // BuildSFX creates a self-extracting rar zip and embed the fastfinder executable / configuration file / yara rules
-func BuildSFX(configuration Configuration, outputSfxExe, logFileLocation string, hideWindow bool) {
+func BuildSFX(configuration Configuration, outputSfxExe string, logLevel int, logFileLocation string, noAdvUI bool, hideWindow bool) {
 	// compress inputDirectory into archive
-	archive := fastfinderResourcesCompress(configuration, logFileLocation, hideWindow)
+	archive := fastfinderResourcesCompress(configuration, logLevel, logFileLocation, noAdvUI, hideWindow)
 
 	file, err := os.Create(outputSfxExe)
 	if err != nil {
@@ -35,12 +33,16 @@ func BuildSFX(configuration Configuration, outputSfxExe, logFileLocation string,
 }
 
 // fastfinderResourcesCompress compress every package file into the zip archive
-func fastfinderResourcesCompress(configuration Configuration, logFileLocation string, hideWindow bool) bytes.Buffer {
+func fastfinderResourcesCompress(configuration Configuration, logLevel int, logFileLocation string, noAdvUI bool, hideWindow bool) bytes.Buffer {
 	var buffer bytes.Buffer
 	archive := zip.NewWriter(&buffer)
 
-	// embed fastfinder.exe executable
-	zipFile, err := archive.Create("fastfinder.exe")
+	// embed fastfinder executable
+	exeName := "fastfinder"
+	if runtime.GOOS == "windows" {
+		exeName += ".exe"
+	}
+	zipFile, err := archive.Create(exeName)
 	if err != nil {
 		LogFatal(fmt.Sprintf("(ERROR) %v", err))
 	}
@@ -72,6 +74,9 @@ func fastfinderResourcesCompress(configuration Configuration, logFileLocation st
 			}
 			response.Body.Close()
 			fileName = filepath.Base(configuration.Input.Content.Yara[i])[:len(filepath.Base(configuration.Input.Content.Yara[i]))-4]
+			if !strings.HasSuffix(fileName, ".yar") {
+				fileName += ".yar"
+			}
 
 		} else {
 			fileName = filepath.Base(configuration.Input.Content.Yara[i])
@@ -98,7 +103,7 @@ func fastfinderResourcesCompress(configuration Configuration, logFileLocation st
 			LogFatal(fmt.Sprintf("(ERROR) %v", err))
 		}
 
-		configuration.Input.Content.Yara[i] = "./fastfinder_resources/" + fileName
+		configuration.Input.Content.Yara[i] = "'./fastfinder_resources/" + fileName + "'"
 
 	}
 
@@ -124,21 +129,27 @@ func fastfinderResourcesCompress(configuration Configuration, logFileLocation st
 	// sfx exec instructions
 	var sfxcomment = "the comment below contains sfx script commands\r\n\r\n" +
 		"Path=%TEMP%\r\n" +
-		"Setup=fastfinder.exe -c fastfinder_resources/configuration.yaml"
+		"Setup=./" + exeName + " -c fastfinder_resources/configuration.yaml"
+
+	// propagate loglevel param
+	sfxcomment += fmt.Sprintf(" -l %d", logLevel)
+
+	// propagage advanced UI param
+	if noAdvUI {
+		sfxcomment += " -u"
+	}
 
 	// output log file
 	if len(logFileLocation) > 0 {
-		sfxcomment += " -o \"" + logFileLocation + "\""
+		//sfxcomment += " -o \"" + logFileLocation + "\""
+		sfxcomment += fmt.Sprintf(" -o %s", logFileLocation)
 	}
 
 	if hideWindow {
 		sfxcomment += " -n"
+		sfxcomment += "\r\n" +
+			"Silent=1"
 	}
-
-	// silent deploy
-	sfxcomment += "\r\n" +
-		"Silent=1\r\n" +
-		"Overwrite=1"
 
 	archive.SetComment(sfxcomment)
 

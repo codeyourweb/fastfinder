@@ -5,6 +5,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	_ "embed"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -17,6 +18,9 @@ import (
 	"syscall"
 	"time"
 )
+
+//go:embed resources/linux_sfx.elf
+var sfxBinary []byte
 
 const LineBreak = "\n"
 
