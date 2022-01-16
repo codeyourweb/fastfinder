@@ -18,7 +18,6 @@ import (
 	"github.com/akamensky/argparse"
 	"github.com/dlclark/regexp2"
 	"github.com/hillu/go-yara/v4"
-	"github.com/rivo/tview"
 )
 
 const FASTFINDER_VERSION = "2.0.0b"
@@ -45,11 +44,12 @@ func main() {
 	if *pDisableAdvUI || *pHideWindow || len(*pSfxPath) > 0 {
 		UIactive = false
 	} else {
-		UIapp = tview.NewApplication()
+		InitUI()
 	}
 
 	// display open file dialog when config file empty
 	if len(*pConfigPath) == 0 {
+		InitUI()
 		OpenFileDialog()
 		*pConfigPath = UIselectedConfigPath
 	}

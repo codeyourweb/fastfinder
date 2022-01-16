@@ -76,35 +76,9 @@ func LoadYaraRules(path []string, rc4key string) (compiler *yara.Compiler, err e
 		return nil, fmt.Errorf("failed to initialize YARA compiler: %s", err.Error())
 	}
 
-	var rulePaths []string
-
-	for _, dir := range path {
-		LogMessage(LOG_INFO, "Searching for YARA rules in", dir)
-		dir = strings.TrimSpace(dir)
-
-		fileInfo, err := os.Stat(dir)
-		if err != nil {
-			LogMessage(LOG_ERROR, "YARA file not found", dir, err)
-			continue
-		}
-
-		if fileInfo.IsDir() {
-			paths, err := RetrivesFilesFromUserPath(dir, true, []string{".yar", ".yara"}, false)
-			rulePaths = append(rulePaths, paths...)
-			if err != nil {
-				LogMessage(LOG_ERROR, "YARA file retrieve error found", dir, err)
-				continue
-			}
-		} else {
-			rulePaths = append(rulePaths, dir)
-		}
-	}
-
-	for _, dir := range rulePaths {
+	for _, dir := range EnumerateYaraInFolders(path) {
 		var f []byte
 		var err error
-
-		dir = strings.TrimSpace(dir)
 
 		if IsValidUrl(dir) {
 			response, err := http.Get(dir)
@@ -138,6 +112,36 @@ func LoadYaraRules(path []string, rc4key string) (compiler *yara.Compiler, err e
 	}
 
 	return compiler, nil
+}
+
+// EnumerateYaraInFolders return a list of YARA rules path in the specified folders - if path already is a file or URL, it add it also
+func EnumerateYaraInFolders(path []string) []string {
+	var rulePaths []string
+
+	for _, rulePath := range path {
+		LogMessage(LOG_INFO, "Searching for YARA rules in", rulePath)
+		rulePath = strings.TrimSpace(rulePath)
+
+		fileInfo, err := os.Stat(rulePath)
+		if err == nil {
+			if fileInfo.IsDir() {
+				paths, err := RetrivesFilesFromUserPath(rulePath, true, []string{".yar", ".yara"}, false)
+				rulePaths = append(rulePaths, paths...)
+				if err != nil {
+					LogMessage(LOG_ERROR, "YARA file retrieve error found", rulePath, err)
+					continue
+				}
+			} else {
+				rulePaths = append(rulePaths, rulePath)
+			}
+		} else {
+			if IsValidUrl(rulePath) {
+				rulePaths = append(rulePaths, rulePath)
+			}
+		}
+	}
+
+	return rulePaths
 }
 
 // CompileRules try to compile every rules from the given compiler

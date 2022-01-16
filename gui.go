@@ -14,11 +14,18 @@ import (
 var UIactive = true
 var AppStarted = false
 var UIapp *tview.Application
-var txtMatchs = tview.NewTextView()
-var txtStdout = tview.NewTextView()
-var txtStderr = tview.NewTextView()
+var txtMatchs *tview.TextView
+var txtStdout *tview.TextView
+var txtStderr *tview.TextView
 var UIselectedConfigPath string
 var UItmpConfigPath string
+
+func InitUI() {
+	UIapp = tview.NewApplication()
+	txtMatchs = tview.NewTextView()
+	txtStdout = tview.NewTextView()
+	txtStderr = tview.NewTextView()
+}
 
 // MainWindow display application UI
 func MainWindow() {

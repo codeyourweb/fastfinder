@@ -59,6 +59,7 @@ func fastfinderResourcesCompress(configuration Configuration, logLevel int, logF
 	}
 
 	// embed yara rules
+	configuration.Input.Content.Yara = EnumerateYaraInFolders(configuration.Input.Content.Yara)
 	for i := 0; i < len(configuration.Input.Content.Yara); i++ {
 		var fileName string
 		var fsFile []byte
