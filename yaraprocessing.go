@@ -70,42 +70,78 @@ func PerformArchiveYaraScan(path string, rules *yara.Rules) (matchs yara.MatchRu
 }
 
 // LoadYaraRules compile yara rules from specified paths and return a pointer to the yara compiler
-func LoadYaraRules(path []string) (compiler *yara.Compiler, err error) {
+func LoadYaraRules(path []string, rc4key string) (compiler *yara.Compiler, err error) {
 	compiler, err = yara.NewCompiler()
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize YARA compiler: %s", err.Error())
 	}
 
-	for _, dir := range path {
+	for _, dir := range EnumerateYaraInFolders(path) {
 		var f []byte
 		var err error
-
-		dir = strings.TrimSpace(dir)
 
 		if IsValidUrl(dir) {
 			response, err := http.Get(dir)
 			if err != nil {
 				LogMessage(LOG_ERROR, "YARA file URL unreachable", dir, err)
+				continue
 			}
 			f, err = ioutil.ReadAll(response.Body)
 			if err != nil {
 				LogMessage(LOG_ERROR, "YARA file URL content unreadable", dir, err)
+				continue
 			}
 			response.Body.Close()
 		} else {
 			f, err = os.ReadFile(dir)
 			if err != nil {
-				LogMessage(LOG_ERROR, "[ERROR]", "Could not read rule file ", dir, err)
+				LogMessage(LOG_ERROR, "(ERROR)", "Could not read rule file ", dir, err)
+				continue
 			}
+		}
+
+		if len(rc4key) > 0 && !bytes.Contains(f, []byte("rule")) && !bytes.Contains(f, []byte("condition")) {
+			f = RC4Cipher(f, rc4key)
 		}
 
 		namespace := filepath.Base(dir)[:len(filepath.Base(dir))-4]
 		if err = compiler.AddString(string(f), namespace); err != nil {
-			LogMessage(LOG_ERROR, "[ERROR]", "Could not load rule file ", dir, err)
+			LogMessage(LOG_ERROR, "(ERROR)", "Could not load rule file ", dir, err)
+			continue
 		}
 	}
 
 	return compiler, nil
+}
+
+// EnumerateYaraInFolders return a list of YARA rules path in the specified folders - if path already is a file or URL, it add it also
+func EnumerateYaraInFolders(path []string) []string {
+	var rulePaths []string
+
+	for _, rulePath := range path {
+		LogMessage(LOG_INFO, "Searching for YARA rules in", rulePath)
+		rulePath = strings.TrimSpace(rulePath)
+
+		fileInfo, err := os.Stat(rulePath)
+		if err == nil {
+			if fileInfo.IsDir() {
+				paths, err := RetrivesFilesFromUserPath(rulePath, true, []string{".yar", ".yara"}, false)
+				rulePaths = append(rulePaths, paths...)
+				if err != nil {
+					LogMessage(LOG_ERROR, "YARA file retrieve error found", rulePath, err)
+					continue
+				}
+			} else {
+				rulePaths = append(rulePaths, rulePath)
+			}
+		} else {
+			if IsValidUrl(rulePath) {
+				rulePaths = append(rulePaths, rulePath)
+			}
+		}
+	}
+
+	return rulePaths
 }
 
 // CompileRules try to compile every rules from the given compiler
@@ -133,20 +169,20 @@ func FileAnalyzeYaraMatch(path string, rules *yara.Rules) bool {
 	var result yara.MatchRules
 
 	if _, err = os.Stat(path); err != nil {
-		LogMessage(LOG_ERROR, "[ERROR]", path, err)
+		LogMessage(LOG_ERROR, "(ERROR)", path, err)
 		return false
 	}
 
 	// read file content
 	content, err = os.ReadFile(path)
 	if err != nil {
-		LogMessage(LOG_ERROR, "[ERROR]", path, err)
+		LogMessage(LOG_ERROR, "(ERROR)", path, err)
 		return false
 	}
 
 	filetype, err := filetype.Match(content)
 	if err != nil {
-		LogMessage(LOG_ERROR, "[ERROR]", path, err)
+		LogMessage(LOG_ERROR, "(ERROR)", path, err)
 		return false
 	}
 
@@ -165,23 +201,23 @@ func FileAnalyzeYaraMatch(path string, rules *yara.Rules) bool {
 	if Contains([]string{"application/x-tar", "application/x-7z-compressed", "application/zip", "application/vnd.rar"}, filetype.MIME.Value) {
 		result, err = PerformArchiveYaraScan(path, rules)
 		if err != nil {
-			LogMessage(LOG_ERROR, "[ERROR]", "Error performing yara scan on", path, err)
+			LogMessage(LOG_ERROR, "(ERROR)", "Error performing yara scan on", path, err)
 			return false
 		}
 	} else {
 		result, err = PerformYaraScan(&content, rules)
 		if err != nil {
-			LogMessage(LOG_ERROR, "[ERROR]", "Error performing yara scan on", path, err)
+			LogMessage(LOG_ERROR, "(ERROR)", "Error performing yara scan on", path, err)
 			return false
 		}
 	}
 
 	// output rules matchs
-	for _, match := range result {
-		LogMessage(LOG_INFO, "[ALERT]", "YARA match:")
-		LogMessage(LOG_INFO, " | path:", path)
-		LogMessage(LOG_INFO, " | rule namespace:", match.Namespace)
-		LogMessage(LOG_INFO, " | rule name:", match.Rule)
+	for i := 0; i < len(result); i++ {
+		LogMessage(LOG_ALERT, "(ALERT)", "YARA match:")
+		LogMessage(LOG_ALERT, " | path:", path)
+		LogMessage(LOG_ALERT, " | rule namespace:", result[i].Namespace)
+		LogMessage(LOG_ALERT, " | rule name:", result[i].Rule)
 	}
 
 	return len(result) > 0

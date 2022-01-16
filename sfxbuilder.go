@@ -3,28 +3,26 @@ package main
 import (
 	"archive/zip"
 	"bytes"
-	_ "embed"
+	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
 
-//go:embed resources/winrar_sfx.exe
-var sfxBinary []byte
-
 // BuildSFX creates a self-extracting rar zip and embed the fastfinder executable / configuration file / yara rules
-func BuildSFX(configuration Configuration, outputSfxExe, logFileLocation string, hideWindow bool) {
+func BuildSFX(configuration Configuration, outputSfxExe string, logLevel int, logFileLocation string, noAdvUI bool, hideWindow bool) {
 	// compress inputDirectory into archive
-	archive := fastfinderResourcesCompress(configuration, logFileLocation, hideWindow)
+	archive := fastfinderResourcesCompress(configuration, logLevel, logFileLocation, noAdvUI, hideWindow)
 
 	file, err := os.Create(outputSfxExe)
 	if err != nil {
-		log.Fatal("[ERROR] ", err)
+		LogFatal(fmt.Sprintf("(ERROR) %v", err))
 	}
 
 	defer file.Close()
@@ -35,28 +33,33 @@ func BuildSFX(configuration Configuration, outputSfxExe, logFileLocation string,
 }
 
 // fastfinderResourcesCompress compress every package file into the zip archive
-func fastfinderResourcesCompress(configuration Configuration, logFileLocation string, hideWindow bool) bytes.Buffer {
+func fastfinderResourcesCompress(configuration Configuration, logLevel int, logFileLocation string, noAdvUI bool, hideWindow bool) bytes.Buffer {
 	var buffer bytes.Buffer
 	archive := zip.NewWriter(&buffer)
 
-	// embed fastfinder.exe executable
-	zipFile, err := archive.Create("fastfinder.exe")
+	// embed fastfinder executable
+	exeName := "fastfinder"
+	if runtime.GOOS == "windows" {
+		exeName += ".exe"
+	}
+	zipFile, err := archive.Create(exeName)
 	if err != nil {
-		log.Fatal("[ERROR] ", err)
+		LogFatal(fmt.Sprintf("(ERROR) %v", err))
 	}
 
 	fsFile, err := os.ReadFile(os.Args[0])
 	if err != nil {
-		log.Fatal("[ERROR] ", err)
+		LogFatal(fmt.Sprintf("(ERROR) %v", err))
 	}
 
 	r := bytes.NewReader(fsFile)
 	_, err = io.Copy(zipFile, r)
 	if err != nil {
-		log.Fatal("[ERROR] ", err)
+		LogFatal(fmt.Sprintf("(ERROR) %v", err))
 	}
 
 	// embed yara rules
+	configuration.Input.Content.Yara = EnumerateYaraInFolders(configuration.Input.Content.Yara)
 	for i := 0; i < len(configuration.Input.Content.Yara); i++ {
 		var fileName string
 		var fsFile []byte
@@ -72,65 +75,82 @@ func fastfinderResourcesCompress(configuration Configuration, logFileLocation st
 			}
 			response.Body.Close()
 			fileName = filepath.Base(configuration.Input.Content.Yara[i])[:len(filepath.Base(configuration.Input.Content.Yara[i]))-4]
+			if !strings.HasSuffix(fileName, ".yar") {
+				fileName += ".yar"
+			}
 
 		} else {
 			fileName = filepath.Base(configuration.Input.Content.Yara[i])
 			fsFile, err = os.ReadFile(configuration.Input.Content.Yara[i])
 
 			if err != nil {
-				log.Fatal("[ERROR] ", err)
+				LogFatal(fmt.Sprintf("(ERROR) %v", err))
 			}
 		}
 
 		zipFile, err := archive.Create("fastfinder_resources/" + fileName)
 		if err != nil {
-			log.Fatal("[ERROR] ", err)
+			LogFatal(fmt.Sprintf("(ERROR) %v", err))
+		}
+
+		// cipher rules
+		if configuration.AdvancedParameters.YaraRC4Key != "" {
+			fsFile = RC4Cipher(fsFile, configuration.AdvancedParameters.YaraRC4Key)
 		}
 
 		r := bytes.NewReader(fsFile)
 		_, err = io.Copy(zipFile, r)
 		if err != nil {
-			log.Fatal("[ERROR] ", err)
+			LogFatal(fmt.Sprintf("(ERROR) %v", err))
 		}
 
-		configuration.Input.Content.Yara[i] = "./fastfinder_resources/" + fileName
+		configuration.Input.Content.Yara[i] = "'./fastfinder_resources/" + fileName + "'"
 
 	}
 
 	// embed configuration file
 	zipFile, err = archive.Create("fastfinder_resources/configuration.yaml")
 	if err != nil {
-		log.Fatal("[ERROR] ", err)
+		LogFatal(fmt.Sprintf("(ERROR) %v", err))
 	}
 	d, err := yaml.Marshal(&configuration)
 	if err != nil {
-		log.Fatal("[ERROR] ", err)
+		LogFatal(fmt.Sprintf("(ERROR) %v", err))
 	}
+
+	// cipher configuration file
+	d = RC4Cipher(d, BUILDER_RC4_KEY)
 
 	r = bytes.NewReader(d)
 	_, err = io.Copy(zipFile, r)
 	if err != nil {
-		log.Fatal("[ERROR] ", err)
+		LogFatal(fmt.Sprintf("(ERROR) %v", err))
 	}
 
 	// sfx exec instructions
 	var sfxcomment = "the comment below contains sfx script commands\r\n\r\n" +
-		"Path=%TEMP%\r\n" +
-		"Setup=fastfinder.exe -c fastfinder_resources/configuration.yaml"
+		"Path=" + tempFolder + "\r\n" +
+		"Setup=" + exeName + " -c " + "fastfinder_resources/configuration.yaml"
+
+	// propagate loglevel param
+	sfxcomment += fmt.Sprintf(" -v %d", logLevel)
+
+	// propagage advanced UI param
+	if noAdvUI {
+		sfxcomment += " -u"
+	}
 
 	// output log file
 	if len(logFileLocation) > 0 {
-		sfxcomment += " -o \"" + logFileLocation + "\""
+		//sfxcomment += " -o \"" + logFileLocation + "\""
+		sfxcomment += fmt.Sprintf(" -o %s", logFileLocation)
 	}
 
-	if hideWindow {
+	if hideWindow && runtime.GOOS == "windows" {
 		sfxcomment += " -n"
+		sfxcomment += "\r\n" +
+			"Silent=1"
 	}
-
-	// silent deploy
-	sfxcomment += "\r\n" +
-		"Silent=1\r\n" +
-		"Overwrite=1"
 
 	archive.SetComment(sfxcomment)
 
@@ -140,7 +160,7 @@ func fastfinderResourcesCompress(configuration Configuration, logFileLocation st
 	err = archive.Close()
 
 	if err != nil {
-		log.Fatal("[ERROR] ", err)
+		LogFatal(fmt.Sprintf("(ERROR) %v", err))
 	}
 	return buffer
 }

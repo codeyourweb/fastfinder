@@ -9,5 +9,5 @@ rule fastfinder_example{
 		$str4 = "getaddrinfo"
 		$str5 = "/.nslookuprc"
 	condition:
-		all of them and uint16(0) == 0x5a4d
+		uint16(0) == 0x5a4d and all of them
 }

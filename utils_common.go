@@ -1,12 +1,15 @@
 package main
 
 import (
+	"crypto/rc4"
+	"crypto/sha256"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/url"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 )
@@ -31,16 +34,39 @@ const (
 	DRIVE_RAMDISK     = 6
 )
 
-// PrintFastfinderLogo is a (useless) function displaying fastfinder logo as ascii art
-func PrintFastfinderLogo() {
-	fmt.Println("==================================================")
-	fmt.Println("  ___       __  ___  ___         __   ___  __     ")
-	fmt.Println(" |__   /\\  /__`  |  |__  | |\\ | |  \\ |__  |__) ")
-	fmt.Println(" |    /~~\\ .__/  |  |    | | \\| |__/ |___ |  \\ ")
-	fmt.Println("                                                  ")
-	fmt.Println("  2021-2022 | Jean-Pierre GARNIER | @codeyourweb  ")
-	fmt.Println("  https://github.com/codeyourweb/fastfinder       ")
-	fmt.Println("==================================================")
+// RenderFastfinderLogo is a (useless) function displaying fastfinder logo as ascii art
+func RenderFastfinderLogo() string {
+	txtLogo := "  ___       __  ___  ___         __   ___  __     " + LineBreak
+	txtLogo += " |__   /\\  /__`  |  |__  | |\\ | |  \\ |__  |__) " + LineBreak
+	txtLogo += " |    /~~\\ .__/  |  |    | | \\| |__/ |___ |  \\ " + LineBreak
+	txtLogo += "                                                  " + LineBreak
+	txtLogo += "  2021-2022 | Jean-Pierre GARNIER | @codeyourweb  " + LineBreak
+	txtLogo += "  https://github.com/codeyourweb/fastfinder       " + LineBreak
+	return txtLogo
+}
+
+// RenderFastfinderVersion returns program and YARA version
+func RenderFastfinderVersion() string {
+	return "Fastfinder version " + FASTFINDER_VERSION + " with embedded YARA version " + YARA_VERSION
+}
+
+// ExitProgram close file log handles and exit the program
+func ExitProgram(code int, noWindow bool) {
+	if !noWindow {
+		message := "Press Ctrl+C to exit"
+		if AppStarted {
+			message = "[yellow]" + message
+		}
+		LogMessage(LOG_EXIT, message)
+		fmt.Scanln()
+		fmt.Print("\n\n")
+	}
+
+	if loggingFile != nil {
+		loggingFile.Close()
+	}
+
+	os.Exit(code)
 }
 
 // GetEnvironmentVariables return a list of environment variables in []Env slice
@@ -57,20 +83,64 @@ func GetEnvironmentVariables() (environmentVariables []Env) {
 	return environmentVariables
 }
 
+// RetrivesFilesFromUserPath return a []string of available files from specified path (includeFileExtensions is available only if listFiles is true)
+func RetrivesFilesFromUserPath(path string, listFiles bool, includeFileExtensions []string, recursive bool) ([]string, error) {
+	var p []string
+
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return []string{}, errors.New("Input file not found")
+	}
+
+	if !info.IsDir() {
+		p = append(p, path)
+	} else {
+		if !recursive {
+			files, err := os.ReadDir(path)
+			if err != nil {
+				return []string{}, err
+			}
+			for _, f := range files {
+				if !(f.IsDir() == listFiles) && (len(includeFileExtensions) == 0 || Contains(includeFileExtensions, filepath.Ext(f.Name()))) {
+					p = append(p, path+string(os.PathSeparator)+f.Name())
+				}
+			}
+		} else {
+			err := filepath.Walk(path, func(walk string, info os.FileInfo, err error) error {
+				if err != nil {
+					LogMessage(LOG_ERROR, "(ERROR)", err)
+				}
+
+				if err == nil && !(info.IsDir() == listFiles) && (len(includeFileExtensions) == 0 || Contains(includeFileExtensions, filepath.Ext(walk))) {
+					p = append(p, walk)
+				}
+
+				return nil
+			})
+
+			if err != nil {
+				LogMessage(LOG_ERROR, "(ERROR)", err)
+			}
+		}
+	}
+
+	return p, nil
+}
+
 // ListFilesRecursively returns a list of files in the specified path and its subdirectories
 func ListFilesRecursively(path string, excludedPaths []string) *[]string {
 	var files []string
 
 	err := filepath.Walk(path, func(path string, f os.FileInfo, err error) error {
 		if err != nil {
-			LogMessage(LOG_ERROR, "[ERROR]", err)
+			LogMessage(LOG_ERROR, "(ERROR)", err)
 			return filepath.SkipDir
 		}
 
 		if !f.IsDir() {
 			for _, excludedPath := range excludedPaths {
 				if len(excludedPath) > 1 && strings.HasPrefix(path, excludedPath) && len(path) > len(excludedPath) {
-					LogMessage(LOG_INFO, "[INFO]", "Skipping dir", path)
+					LogMessage(LOG_INFO, "(INFO)", "Skipping dir", path)
 					return filepath.SkipDir
 				}
 			}
@@ -81,7 +151,7 @@ func ListFilesRecursively(path string, excludedPaths []string) *[]string {
 	})
 
 	if err != nil {
-		LogMessage(LOG_ERROR, "[ERROR]", err)
+		LogMessage(LOG_ERROR, "(ERROR)", err)
 	}
 
 	return &files
@@ -92,13 +162,13 @@ func FileCopy(src, dst string, base64Encode bool) {
 	dst += filepath.Base(src) + ".fastfinder"
 	srcFile, err := os.Open(src)
 	if err != nil {
-		log.Fatal(err)
+		LogFatal(fmt.Sprintf("%v", err))
 	}
 	defer srcFile.Close()
 
 	dstFile, err := os.Create(dst)
 	if err != nil {
-		log.Fatal(err)
+		LogFatal(fmt.Sprintf("%v", err))
 	}
 	defer dstFile.Close()
 
@@ -112,14 +182,14 @@ func FileCopy(src, dst string, base64Encode bool) {
 	}
 
 	if err != nil {
-		log.Fatal(err)
+		LogFatal(fmt.Sprintf("%v", err))
 	}
 }
 
 // Contains checks if a string is contained in a slice of strings
 func Contains(s []string, str string) bool {
-	for _, v := range s {
-		if v == str {
+	for i := 0; i < len(s); i++ {
+		if s[i] == str {
 			return true
 		}
 	}
@@ -140,4 +210,66 @@ func IsValidUrl(toTest string) bool {
 	}
 
 	return true
+}
+
+// GetHostname returns the hostname of the current machine
+func GetHostname() string {
+	name, err := os.Hostname()
+	if err != nil {
+		return ""
+	}
+
+	return name
+}
+
+// GetUsername returns the current user name
+func GetUsername() string {
+	user, err := user.Current()
+	if err != nil {
+		return ""
+	}
+
+	return user.Username
+}
+
+// GetCurrentDirectory returns the current directory
+func GetCurrentDirectory() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+
+	return dir
+}
+
+// Get SHA256 checksum of the specified file
+func FileSHA256Sum(path string) string {
+	file, err := os.Open(path)
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer file.Close()
+
+	hash := sha256.New()
+	_, err = io.Copy(hash, file)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return fmt.Sprintf("%x", hash.Sum(nil))
+}
+
+// RC4Cipher is used on Yara ciphered rules
+func RC4Cipher(content []byte, key string) []byte {
+	c, err := rc4.NewCipher([]byte(key))
+	if err != nil {
+		LogFatal(fmt.Sprintf("(ERROR) %v", err))
+	}
+
+	c.XORKeyStream(content, content)
+
+	return content
 }
