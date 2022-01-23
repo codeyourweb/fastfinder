@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -9,6 +10,12 @@ import (
 
 	"gopkg.in/yaml.v3"
 )
+
+type ConfigurationObject struct {
+	Line int
+
+	Configuration
+}
 
 type Configuration struct {
 	Input              Input              `yaml:"input"`
@@ -48,8 +55,19 @@ type AdvancedParameters struct {
 	CleanMemoryIfFileGreaterThanSize int    `yaml:"cleanMemoryIfFileGreaterThanSize"`
 }
 
+func (i *ConfigurationObject) UnmarshalYAML(value *yaml.Node) error {
+	err := value.Decode(&i.Configuration)
+	if err != nil {
+		return err
+	}
+
+	i.Line = value.Line
+
+	return nil
+}
+
 func (c *Configuration) getConfiguration(configFile string) *Configuration {
-	var yamlFile []byte
+	var yamlContent []byte
 	var err error
 	configFile = strings.TrimSpace(configFile)
 
@@ -59,27 +77,31 @@ func (c *Configuration) getConfiguration(configFile string) *Configuration {
 		if err != nil {
 			LogFatal(fmt.Sprintf("Configuration file URL unreachable %v", err))
 		}
-		yamlFile, err = ioutil.ReadAll(response.Body)
+		yamlContent, err = ioutil.ReadAll(response.Body)
 		if err != nil {
 			LogFatal(fmt.Sprintf("Configuration file URL content unreadable %v", err))
 		}
 		response.Body.Close()
 	} else {
-		yamlFile, err = ioutil.ReadFile(configFile)
+		yamlContent, err = ioutil.ReadFile(configFile)
 		if err != nil {
 			LogFatal(fmt.Sprintf("Configuration file reading error %v ", err))
 		}
 	}
 
-	// unmarshal yaml file
-	err = yaml.Unmarshal(yamlFile, c)
-	if err != nil {
-		// if yaml unmarshal fails, try to RC4 decrypt it
-		err = yaml.Unmarshal(RC4Cipher(yamlFile, BUILDER_RC4_KEY), c)
-		if err != nil {
-			LogFatal(fmt.Sprintf("Configuration file parsing error: %v", err))
-		}
+	// ciphered yaml file
+	if !bytes.Contains(yamlContent, []byte("input")) {
+		yamlContent = RC4Cipher(yamlContent, BUILDER_RC4_KEY)
 	}
+
+	var o ConfigurationObject
+	err = yaml.Unmarshal(yamlContent, &o)
+
+	if err != nil {
+		LogFatal(fmt.Sprintf("%s - %v", configFile, err))
+	}
+
+	*c = o.Configuration
 
 	// check for specific user configuration params inconsistencies
 	if len(c.Input.Path) == 0 || (len(c.Input.Content.Grep) == 0 && len(c.Input.Content.Yara) == 0 && len(c.Input.Content.Checksum) == 0) {
