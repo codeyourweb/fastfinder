@@ -1,0 +1,17 @@
+input:
+    path: []
+    content:
+        grep: []
+        yara:
+          - './examples/example_windows_api_triage.yar'
+        checksum: []
+options:
+    contentMatchDependsOnPathMatch: false
+    findInHardDrives: true
+    findInRemovableDrives: false
+    findInNetworkDrives: false
+    findInCDRomDrives: false
+output:
+    copyMatchingFiles: false
+    base64Files: false
+    filesCopyPath: ''
