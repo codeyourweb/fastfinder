@@ -190,10 +190,10 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pNoAdvUI bo
 				if len(matchPathPattern) == 0 {
 					LogMessage(LOG_VERBOSE, "(INFO)", "Neither path nor pattern match. no file to scan with YARA.", basePath)
 				} else {
-					matchContent = *FindInFilesContent(&matchPathPattern, config.Input.Content.Grep, rules, config.Input.Content.Checksum, config.AdvancedParameters.MaxScanFilesize, config.AdvancedParameters.CleanMemoryIfFileGreaterThanSize)
+					matchContent = *FindInFilesContent(&matchPathPattern, config.Input.Content.Grep, rules, config.Input.Content.Checksum, false, config.AdvancedParameters.MaxScanFilesize, config.AdvancedParameters.CleanMemoryIfFileGreaterThanSize)
 				}
 			} else {
-				matchContent = *FindInFilesContent(filesEnumeration, config.Input.Content.Grep, rules, config.Input.Content.Checksum, config.AdvancedParameters.MaxScanFilesize, config.AdvancedParameters.CleanMemoryIfFileGreaterThanSize)
+				matchContent = *FindInFilesContent(filesEnumeration, config.Input.Content.Grep, rules, config.Input.Content.Checksum, false, config.AdvancedParameters.MaxScanFilesize, config.AdvancedParameters.CleanMemoryIfFileGreaterThanSize)
 			}
 		}
 
@@ -382,7 +382,7 @@ func InitTriageScan(config Configuration, rules *yara.Rules, baseDrives []string
 			if event.Op&fsnotify.Write == fsnotify.Write {
 				LogMessage(LOG_VERBOSE, "(INFO)", "Scanning file:", event.Name)
 				time.Sleep(500 * time.Millisecond)
-				m := FindInFilesContent(&[]string{event.Name}, config.Input.Content.Grep, rules, config.Input.Content.Checksum, config.AdvancedParameters.MaxScanFilesize, config.AdvancedParameters.CleanMemoryIfFileGreaterThanSize)
+				m := FindInFilesContent(&[]string{event.Name}, config.Input.Content.Grep, rules, config.Input.Content.Checksum, true, config.AdvancedParameters.MaxScanFilesize, config.AdvancedParameters.CleanMemoryIfFileGreaterThanSize)
 				if len(*m) > 0 && config.Output.CopyMatchingFiles {
 					if config.Output.CopyMatchingFiles {
 						LogMessage(LOG_VERBOSE, "(INFO)", "Copying file:", event.Name)

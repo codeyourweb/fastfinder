@@ -34,7 +34,7 @@ func PathsFinder(files *[]string, patterns []*regexp2.Regexp) *[]string {
 }
 
 // FindInFiles check for pattern or checksum match in files slice
-func FindInFilesContent(files *[]string, patterns []string, rules *yara.Rules, hashList []string, maxScanFilesize int, cleanMemoryIfFileGreaterThanSize int) *[]string {
+func FindInFilesContent(files *[]string, patterns []string, rules *yara.Rules, hashList []string, triageMode bool, maxScanFilesize int, cleanMemoryIfFileGreaterThanSize int) *[]string {
 	var matchingFiles []string
 
 	InitProgressbar(int64(len(*files)))
@@ -42,12 +42,18 @@ func FindInFilesContent(files *[]string, patterns []string, rules *yara.Rules, h
 		ProgressBarStep()
 		b, err := ioutil.ReadFile(path)
 		if err != nil {
-			time.Sleep(500 * time.Millisecond)
-			b, err = ioutil.ReadFile(path)
-			if err != nil {
+			if triageMode {
+				time.Sleep(500 * time.Millisecond)
+				b, err = ioutil.ReadFile(path)
+				if err != nil {
+					LogMessage(LOG_ERROR, "(ERROR)", "Unable to read file", path)
+					continue
+				}
+			} else {
 				LogMessage(LOG_ERROR, "(ERROR)", "Unable to read file", path)
 				continue
 			}
+
 		}
 
 		// cancel analysis if file size is greater than maxScanFilesize
