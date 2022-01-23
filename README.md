@@ -32,6 +32,7 @@ _go-yara_ and CGO compilation. Anyway, you'll find a detailed documentation [for
 usage: fastfinder [-h|--help] [-c|--configuration "<value>"] [-b|--build
                   "<value>"] [-o|--output "<value>"] [-n|--no-window]
                   [-u|--no-userinterface] [-v|--verbosity <integer>]
+                  [-t|--triage]
 
                   Incident Response - Fast suspicious file finder
 
@@ -49,7 +50,9 @@ Arguments:
                                  | 3: Alert and errors
                                  | 2: Alerts,errors and I/O operations
                                  | 1: Full verbosity)
-                               . Default: 3
+                                . Default: 3
+  -t  --triage            Triage mode (infinite run - scan every new file in
+                          the input path directories). Default: false
 ``` 
 
 Depending on where you are looking for files, _FastFinder_ could be used with admin OR simple user rights. 
