@@ -19,6 +19,7 @@ var txtStdout *tview.TextView
 var txtStderr *tview.TextView
 var UIselectedConfigPath string
 var UItmpConfigPath string
+var currentSelector int = 1
 
 func InitUI() {
 	UIapp = tview.NewApplication()
@@ -35,6 +36,14 @@ func MainWindow() {
 	txtAppTitle := tview.NewTextView().
 		SetDynamicColors(true).
 		SetText(RenderFastfinderVersion()).
+		SetTextAlign(tview.AlignCenter)
+
+	/*
+	 * TEXTVIEW : selection box helper
+	 */
+	txtInfoTitle := tview.NewTextView().
+		SetDynamicColors(true).
+		SetText("Press tab to navigate between log box | Up and Down arrow to scroll").
 		SetTextAlign(tview.AlignCenter)
 
 	/*
@@ -59,9 +68,9 @@ func MainWindow() {
 			UIapp.Draw()
 		})
 
-		/*
-		 * TEXTVIEW : execution errors
-		 */
+	/*
+	 * TEXTVIEW : execution errors
+	 */
 	txtStderr.
 		SetDynamicColors(true).
 		SetText("[red]Access and scan errors:\n").
@@ -73,11 +82,33 @@ func MainWindow() {
 	/*
 	 * Building window
 	 */
-	grid := tview.NewGrid().SetRows(1, -5, -2).SetColumns(0, 0).SetBorders(true)
+	grid := tview.NewGrid().SetRows(1, -5, -2, 1).SetColumns(0, 0).SetBorders(true)
 	grid.AddItem(txtAppTitle, 0, 0, 1, 2, 0, 0, false)
 	grid.AddItem(txtMatchs, 1, 1, 1, 1, 0, 0, false)
 	grid.AddItem(txtStderr, 1, 0, 1, 1, 0, 0, false)
 	grid.AddItem(txtStdout, 2, 0, 1, 2, 0, 0, false)
+	grid.AddItem(txtInfoTitle, 3, 0, 1, 2, 0, 0, false)
+
+	grid.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyTab {
+			switch currentSelector {
+			case 1:
+				currentSelector++
+				UIapp.SetFocus(txtStdout)
+				txtInfoTitle.SetText("Selected box: Informations messages")
+			case 2:
+				currentSelector++
+				UIapp.SetFocus(txtStderr)
+				txtInfoTitle.SetText("Selected box: Error messages")
+			case 3:
+				currentSelector = 1
+				UIapp.SetFocus(txtMatchs)
+				txtInfoTitle.SetText("Selected box: Matchs messages")
+			}
+			return nil
+		}
+		return event
+	})
 
 	AppStarted = true
 	if err := UIapp.SetRoot(grid, true).SetFocus(txtMatchs).Run(); err != nil {
