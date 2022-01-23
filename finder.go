@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"runtime/debug"
 	"strings"
+	"time"
 
 	"github.com/dlclark/regexp2"
 	"github.com/h2non/filetype"
@@ -41,8 +42,12 @@ func FindInFilesContent(files *[]string, patterns []string, rules *yara.Rules, h
 		ProgressBarStep()
 		b, err := ioutil.ReadFile(path)
 		if err != nil {
-			LogMessage(LOG_ERROR, "(ERROR)", "Unable to read file", path)
-			continue
+			time.Sleep(500 * time.Millisecond)
+			b, err = ioutil.ReadFile(path)
+			if err != nil {
+				LogMessage(LOG_ERROR, "(ERROR)", "Unable to read file", path)
+				continue
+			}
 		}
 
 		// cancel analysis if file size is greater than maxScanFilesize
@@ -70,6 +75,10 @@ func FindInFilesContent(files *[]string, patterns []string, rules *yara.Rules, h
 		if err != nil {
 			LogMessage(LOG_ERROR, "(ERROR)", "Error performing yara scan on", path, err)
 			continue
+		}
+
+		if len(yaraResult) > 0 && !Contains(matchingFiles, path) {
+			matchingFiles = append(matchingFiles, path)
 		}
 
 		// output yara match results
@@ -122,6 +131,9 @@ func FindInFilesContent(files *[]string, patterns []string, rules *yara.Rules, h
 					LogMessage(LOG_ALERT, " | path:", path, "("+subFile.Name+")")
 					LogMessage(LOG_ALERT, " | rule namespace:", yaraResult[i].Namespace)
 					LogMessage(LOG_ALERT, " | rule name:", yaraResult[i].Rule)
+					for j := 0; j < len(yaraResult[i].Strings); j++ {
+						LogMessage(LOG_VERBOSE, " | ", "name:", yaraResult[i].Strings[j].Name, fmt.Sprintf("\"%s\"", yaraResult[i].Strings[j].Data), "offset:", yaraResult[i].Strings[j].Offset)
+					}
 				}
 			}
 		}

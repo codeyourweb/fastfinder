@@ -12,6 +12,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type Env struct {
@@ -157,9 +158,39 @@ func ListFilesRecursively(path string, excludedPaths []string) *[]string {
 	return &files
 }
 
+// ListFilesRecursively returns a list of files in the specified path and its subdirectories
+func ListDirectoryRecursively(path string, excludedPaths []string) *[]string {
+	var directories []string
+
+	err := filepath.Walk(path, func(path string, f os.FileInfo, err error) error {
+		if err != nil {
+			LogMessage(LOG_ERROR, "(ERROR)", err)
+			return filepath.SkipDir
+		}
+
+		if f.IsDir() {
+			for _, excludedPath := range excludedPaths {
+				if len(excludedPath) > 1 && strings.HasPrefix(path, excludedPath) && len(path) > len(excludedPath) {
+					LogMessage(LOG_INFO, "(INFO)", "Skipping dir", path)
+					return filepath.SkipDir
+				}
+			}
+
+			directories = append(directories, path)
+		}
+		return nil
+	})
+
+	if err != nil {
+		LogMessage(LOG_ERROR, "(ERROR)", err)
+	}
+
+	return &directories
+}
+
 // FileCopy copy the specified file from src to dst path, and eventually encode its content to base64
 func FileCopy(src, dst string, base64Encode bool) {
-	dst += filepath.Base(src) + ".fastfinder"
+	dst += fmt.Sprintf("%d_%s.fastfinder", time.Now().Unix(), filepath.Base(src))
 	srcFile, err := os.Open(src)
 	if err != nil {
 		LogFatal(fmt.Sprintf("%v", err))

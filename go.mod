@@ -7,12 +7,13 @@ require (
 	github.com/gen2brain/go-unarr v0.1.2
 	github.com/h2non/filetype v1.1.3
 	github.com/hillu/go-yara/v4 v4.1.0
-	golang.org/x/sys v0.0.0-20211205182925-97ca703d548d
+	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 )
 
 require (
 	github.com/dlclark/regexp2 v1.4.0
+	github.com/fsnotify/fsnotify v1.5.1
 	github.com/gdamore/tcell/v2 v2.4.1-0.20210905002822-f057f0a857a1
 	github.com/rivo/tview v0.0.0-20220106183741-90d72bc664f5
 	github.com/schollz/progressbar/v3 v3.8.3

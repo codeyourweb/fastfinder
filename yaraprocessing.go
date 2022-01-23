@@ -15,6 +15,32 @@ import (
 	"github.com/hillu/go-yara/v4"
 )
 
+// CompileYaraRules return *yara.Rules result of yara files compilation
+func CompileYaraRules(yaraFiles []string, yaraRC4Key string) (rules *yara.Rules) {
+	var compiler *yara.Compiler
+	var err error
+
+	LogMessage(LOG_VERBOSE, "(INIT)", "Compiling Yara rules")
+	compiler, err = LoadYaraRules(yaraFiles, yaraRC4Key)
+	if err != nil {
+		LogMessage(LOG_ERROR, err)
+		ExitProgram(1, !UIactive)
+	}
+
+	rules, err = CompileRules(compiler)
+	if err != nil {
+		LogMessage(LOG_ERROR, err)
+		ExitProgram(1, !UIactive)
+	}
+
+	LogMessage(LOG_VERBOSE, "(INIT)", len(rules.GetRules()), "YARA rules compiled")
+	for _, r := range rules.GetRules() {
+		LogMessage(LOG_INFO, " | rule:", r.Identifier())
+	}
+
+	return rules
+}
+
 // PerformYaraScan use provided YARA rules and search for match in the given byte slice
 func PerformYaraScan(data *[]byte, rules *yara.Rules) (yara.MatchRules, error) {
 	result, err := yaraScan(*data, rules)
@@ -163,7 +189,7 @@ func yaraScan(content []byte, rules *yara.Rules) (match yara.MatchRules, err err
 }
 
 // FileAnalyzeYaraMatch use yara to scan the specified file and return if it match to compiled rules or not
-func FileAnalyzeYaraMatch(path string, rules *yara.Rules) bool {
+func FileAnalyzeYaraMatch(path string, rules *yara.Rules, maxFileSizeScan int, cleanMemoryIfSizeGreaterThan int) bool {
 	var err error
 	var content []byte
 	var result yara.MatchRules
@@ -187,13 +213,13 @@ func FileAnalyzeYaraMatch(path string, rules *yara.Rules) bool {
 	}
 
 	// cleaning memory if file size is greater than 512Mb
-	if len(content) > 1024*1024*512 {
+	if len(content) > 1024*1024*cleanMemoryIfSizeGreaterThan {
 		defer debug.FreeOSMemory()
 	}
 
 	// cancel analysis if file size is greater than 2Gb
 	if len(content) > 1024*1024*2048 {
-		LogMessage(LOG_ERROR, "File size is greater than 2Gb, skipping", path)
+		LogMessage(LOG_ERROR, fmt.Sprintf("File size is greater than %dMb, skipping", maxFileSizeScan), path)
 		return false
 	}
 
