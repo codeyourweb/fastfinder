@@ -113,7 +113,7 @@ func EnumLogicalDrives() (drivesInfo []DriveInfo, excludedPaths []string) {
 func bitsToDrives(bits uint32) (drives []string) {
 	for i := 0; i < 26; i++ {
 		if bits&(1<<uint(i)) != 0 {
-			drives = append(drives, string('A'+i))
+			drives = append(drives, fmt.Sprintf("%c", rune('A'+i)))
 		}
 	}
 	return drives
