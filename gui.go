@@ -19,8 +19,8 @@ var txtStdout *tview.TextView
 var txtStderr *tview.TextView
 var UIselectedConfigPath string
 var UItmpConfigPath string
-var currentMainWindowSelector int = 1
-var currentConfigWindowSelector int = 1
+var currentMainWindowSelector int = 0
+var currentConfigWindowSelector int = 0
 
 func InitUI() {
 	UIapp = tview.NewApplication()
@@ -31,6 +31,7 @@ func InitUI() {
 
 // MainWindow display application UI
 func MainWindow() {
+	currentMainWindowSelector = 1
 	/*
 	 * TEXTVIEW : Windows app name
 	 */
@@ -120,6 +121,7 @@ func MainWindow() {
 
 // OpenFileDialog show a navigable tree view of the current directory.
 func OpenFileDialog() {
+	currentConfigWindowSelector = 1
 	/*
 	 * TEXTVIEW : Dialog title
 	 */

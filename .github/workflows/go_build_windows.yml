@@ -49,16 +49,3 @@ jobs:
           go build -trimpath -tags yara_static -a -ldflags '-s -w -extldflags "-static"' .
           ls
           .\fastfinder.exe -h
-      - name: Tests
-        shell: powershell
-        run: |
-          $Env:PATH += ";C:/msys64/mingw64/include"
-          $Env:PATH += ";C:/msys64/mingw64/lib"
-          $Env:PATH += ";C:/msys64/mingw64/lib/pkgconfig"
-          $Env:GOOS="windows"
-          $Env:GOARCH="amd64"
-          $Env:CGO_CFLAGS="-IC:/msys64/mingw64/include"
-          $Env:CGO_LDFLAGS="-LC:/msys64/mingw64/lib -lyara -lcrypto"
-          $Env:PKG_CONFIG_PATH="C:/msys64/mingw64/lib/pkgconfig"
-          cd $Env:GITHUB_WORKSPACE
-          go test -v

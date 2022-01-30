@@ -188,8 +188,8 @@ func ListDirectoryRecursively(path string, excludedPaths []string) *[]string {
 	return &directories
 }
 
-// FileCopy copy the specified file from src to dst path, and eventually encode its content to base64
-func FileCopy(src, dst string, base64Encode bool) {
+// FileCopy copy the specified file from src to dst path, and eventually encode its content to base64. Return copied file path
+func FileCopy(src, dst string, base64Encode bool) string {
 	dst += fmt.Sprintf("%d_%s.fastfinder", time.Now().Unix(), filepath.Base(src))
 	srcFile, err := os.Open(src)
 	if err != nil {
@@ -215,6 +215,8 @@ func FileCopy(src, dst string, base64Encode bool) {
 	if err != nil {
 		LogFatal(fmt.Sprintf("%v", err))
 	}
+
+	return dst
 }
 
 // Contains checks if a string is contained in a slice of strings

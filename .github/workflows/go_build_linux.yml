@@ -33,7 +33,3 @@ jobs:
            ls
            sudo chmod +x fastfinder
            sudo ./fastfinder -h
-      - name: Tests
-        run: |
-          export PKG_CONFIG_PATH=${HOME}/prefix/lib/pkgconfig
-          go test -v -tags yara_static -a -ldflags '-s -w -extldflags "-static"' .

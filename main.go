@@ -21,13 +21,13 @@ import (
 	"github.com/hillu/go-yara/v4"
 )
 
-const FASTFINDER_VERSION = "2.0.0b"
+const FASTFINDER_VERSION = "2.0.0"
 const YARA_VERSION = "4.1.3"
 const BUILDER_RC4_KEY = ">Õ°ªKb{¡§ÌB$lMÕ±9l.tòÑé¦Ø¿"
 
 func main() {
 	// parse configuration file
-	parser := argparse.NewParser("fastfinder", "Incident Response - Fast suspicious file finder")
+	parser := argparse.NewParser("fastfinder", "Fastfinder v"+FASTFINDER_VERSION+" (with YARA "+YARA_VERSION+")"+LineBreak+"\t\t\tIncident Response - Fast suspicious file finder")
 	pConfigPath := parser.String("c", "configuration", &argparse.Options{Required: false, Default: "", Help: "Fastfind configuration file"})
 	pSfxPath := parser.String("b", "build", &argparse.Options{Required: false, Help: "Output a standalone package with configuration and rules in a single binary"})
 	pOutLogPath := parser.String("o", "output", &argparse.Options{Required: false, Help: "Save fastfinder logs in the specified file"})
@@ -42,59 +42,64 @@ func main() {
 		log.Fatal(parser.Usage(err))
 	}
 
+	RunProgramWithParameters(*pConfigPath, *pSfxPath, *pOutLogPath, *pHideWindow, *pDisableAdvUI, *pLogVerbosity, *pTriage)
+}
+
+// RunProgramWithParameters used specified argv and run fastfinder
+func RunProgramWithParameters(pConfigPath string, pSfxPath string, pOutLogPath string, pHideWindow bool, pDisableAdvUI bool, pLogVerbosity int, pTriage bool) {
 	// enable advanced UI
-	if *pTriage || *pDisableAdvUI || *pHideWindow || len(*pSfxPath) > 0 {
+	if pTriage || pDisableAdvUI || pHideWindow || len(pSfxPath) > 0 {
 		UIactive = false
 	} else {
 		InitUI()
 	}
 
 	// display open file dialog when config file empty
-	if len(*pConfigPath) == 0 {
+	if len(pConfigPath) == 0 {
 		InitUI()
 		OpenFileDialog()
-		*pConfigPath = UIselectedConfigPath
+		pConfigPath = UIselectedConfigPath
 	}
 
 	// check for log path validity
-	if len(*pOutLogPath) > 0 {
-		if strings.Contains(*pOutLogPath, " ") {
+	if len(pOutLogPath) > 0 {
+		if strings.Contains(pOutLogPath, " ") {
 			LogFatal("Log file path cannot contain spaces")
 		}
 	}
 
 	// init progressbar object
-	EnableProgressbar(*pDisableAdvUI)
+	EnableProgressbar(pDisableAdvUI)
 
 	// configuration parsing
 	var config Configuration
-	config.getConfiguration(*pConfigPath)
+	config.getConfiguration(pConfigPath)
 	if config.Output.FilesCopyPath != "" {
 		config.Output.FilesCopyPath = "./"
 	}
 
 	// window hidden
-	if *pHideWindow && len(*pSfxPath) == 0 {
+	if pHideWindow && len(pSfxPath) == 0 {
 		HideConsoleWindow()
 	}
 
 	// output log to file
-	if len(*pOutLogPath) > 0 && len(*pSfxPath) == 0 {
-		loggingPath = *pOutLogPath
+	if len(pOutLogPath) > 0 && len(pSfxPath) == 0 {
+		loggingPath = pOutLogPath
 	}
 
 	// file logging verbosity
-	if *pLogVerbosity >= 1 && *pLogVerbosity <= 4 {
-		loggingVerbosity = *pLogVerbosity
+	if pLogVerbosity >= 1 && pLogVerbosity <= 4 {
+		loggingVerbosity = pLogVerbosity
 	}
 
 	// run app
 	if UIactive {
-		go MainFastfinderRoutine(config, *pConfigPath, *pDisableAdvUI, *pHideWindow, *pSfxPath, *pTriage, *pOutLogPath, *pLogVerbosity)
+		go MainFastfinderRoutine(config, pConfigPath, pDisableAdvUI, pHideWindow, pSfxPath, pTriage, pOutLogPath, pLogVerbosity)
 		MainWindow()
 	} else {
 		LogMessage(LOG_INFO, LineBreak+"================================================"+LineBreak+RenderFastfinderLogo()+"================================================"+LineBreak)
-		MainFastfinderRoutine(config, *pConfigPath, *pDisableAdvUI, *pHideWindow, *pSfxPath, *pTriage, *pOutLogPath, *pLogVerbosity)
+		MainFastfinderRoutine(config, pConfigPath, pDisableAdvUI, pHideWindow, pSfxPath, pTriage, pOutLogPath, pLogVerbosity)
 	}
 
 }

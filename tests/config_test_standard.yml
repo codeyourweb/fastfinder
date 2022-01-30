@@ -1,0 +1,17 @@
+input:
+    path: []
+    content:
+        grep:
+          - 'package main'
+        yara: []
+        checksum: []
+options:
+    contentMatchDependsOnPathMatch: false
+    findInHardDrives: true
+    findInRemovableDrives: false
+    findInNetworkDrives: false
+    findInCDRomDrives: false
+output:
+    copyMatchingFiles: false
+    base64Files: false
+    filesCopyPath: ''

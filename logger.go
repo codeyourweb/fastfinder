@@ -19,6 +19,15 @@ const (
 var loggingVerbosity int = 3
 var loggingPath string = ""
 var loggingFile *os.File
+var unitTesting bool
+
+func LogTesting(testing bool) {
+	unitTesting = testing
+
+	if !testing {
+		log.SetOutput(os.Stderr)
+	}
+}
 
 // LogMessage output message to the specific standard / error output
 func LogMessage(logType int, logMessage ...interface{}) {
@@ -29,7 +38,7 @@ func LogMessage(logType int, logMessage ...interface{}) {
 
 	message := strings.Join(aString, " ")
 
-	if UIactive && AppStarted {
+	if UIactive && AppStarted && !unitTesting {
 		currentTime := time.Now()
 		message = "[" + currentTime.Format("2006-01-02 15:04:05") + "] " + message
 		if logType == LOG_INFO || logType == LOG_VERBOSE || logType == LOG_EXIT {
@@ -43,10 +52,12 @@ func LogMessage(logType int, logMessage ...interface{}) {
 			fmt.Fprintf(txtStderr, "%s\n", message)
 		}
 	} else {
-		if logType == LOG_ERROR {
-			log.SetOutput(os.Stderr)
-		} else {
-			log.SetOutput(os.Stdout)
+		if !unitTesting {
+			if logType == LOG_ERROR {
+				log.SetOutput(os.Stderr)
+			} else {
+				log.SetOutput(os.Stdout)
+			}
 		}
 
 		log.Println(message)

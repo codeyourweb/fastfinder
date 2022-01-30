@@ -12,8 +12,8 @@ focused on endpoint enumeration and suspicious file finding based on various cri
 * complex content condition(s) based on YARA
 
 ## Ready for battle!
-* fastfinder has been tested in real cases in multiple CERT, CSIRT and SOC
-* examples directory now include real malwares , suspect behaviors or vulnerability scan
+* fastfinder has been tested in real cases in multiple CERT, CSIRT and SOC use cases
+* examples directory now include real malwares / suspect behaviors or vulnerability scan examples
 
 ### Installation 
 Compiled release of this software are available. If you want to compile 
@@ -83,7 +83,7 @@ advancedparameters:
 ``` 
 ### Search everywhere or in specified paths:
 * use '?' in paths for simple char wildcard (eg. powershe??.exe)
-* use '\\*' in paths for multiple chars wildcard (eg. \\*.exe)
+* use '\\\*' in paths for multiple chars wildcard (eg. \\\*.exe)
 * regular expressions are also available , just enclose paths with slashes (eg. /[0-9]{8}\\.exe/)
 * environment variables can also be used (eg. %TEMP%\\myfile.exe)
 
