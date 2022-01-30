@@ -77,22 +77,24 @@ func FindInFilesContent(files *[]string, patterns []string, rules *yara.Rules, h
 		}
 
 		// yara scan on file content
-		yaraResult, err := PerformYaraScan(&b, rules)
-		if err != nil {
-			LogMessage(LOG_ERROR, "(ERROR)", "Error performing yara scan on", path, err)
-			continue
-		}
+		if rules != nil && len(rules.GetRules()) > 0 {
+			yaraResult, err := PerformYaraScan(&b, rules)
+			if err != nil {
+				LogMessage(LOG_ERROR, "(ERROR)", "Error performing yara scan on", path, err)
+				continue
+			}
 
-		if len(yaraResult) > 0 && !Contains(matchingFiles, path) {
-			matchingFiles = append(matchingFiles, path)
-		}
+			if len(yaraResult) > 0 && !Contains(matchingFiles, path) {
+				matchingFiles = append(matchingFiles, path)
+			}
 
-		// output yara match results
-		for i := 0; i < len(yaraResult); i++ {
-			LogMessage(LOG_ALERT, "(ALERT)", "YARA match:")
-			LogMessage(LOG_ALERT, " | path:", path)
-			LogMessage(LOG_ALERT, " | rule namespace:", yaraResult[i].Namespace)
-			LogMessage(LOG_ALERT, " | rule name:", yaraResult[i].Rule)
+			// output yara match results
+			for i := 0; i < len(yaraResult); i++ {
+				LogMessage(LOG_ALERT, "(ALERT)", "YARA match:")
+				LogMessage(LOG_ALERT, " | path:", path)
+				LogMessage(LOG_ALERT, " | rule namespace:", yaraResult[i].Namespace)
+				LogMessage(LOG_ALERT, " | rule name:", yaraResult[i].Rule)
+			}
 		}
 
 		// if file type is an archive, extract and calculate checksum for every file inside

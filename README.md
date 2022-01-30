@@ -81,13 +81,16 @@ advancedparameters:
     maxScanFilesize: 2048 #  ignore files up to maxScanFileSize Mb (default: 2048)               
     cleanMemoryIfFileGreaterThanSize: 512 # clean fastfinder internal memory after heavy file scan (default: 512Mb) 
 ``` 
-### Note for input path:
-* '?' for simple char  and '\\*' (eg. powershe??.exe)  for multiple chars (eg. \\*.exe) wildcards are available for simple string
-* environment variables are also available (eg. %TEMP%\\\*.exe)
-* regular expression are allowed , they should be enclosed by /<regex>/
+### Search everywhere or in specified paths:
+* use '?' in paths for simple char wildcard (eg. powershe??.exe)
+* use '\\*' in paths for multiple chars wildcard (eg. \\*.exe)
+* regular expressions are also available , just enclose paths with slashes (eg. /[0-9]{8}\\.exe/)
+* environment variables can also be used (eg. %TEMP%\\myfile.exe)
+
+### Important notes
 * input path are always case INSENSITIVE
-* input content grep strings are always case SENSITIVE
-* backslashes haven't to be escaped on simple string pattern
+* content search on string (grep) are always case SENSITIVE
+* backslashes SHOULD NOT be escaped (except with regular expressions)
 For more informations, take a look at the [examples](./examples)
 
 ## About this project
