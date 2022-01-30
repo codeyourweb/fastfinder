@@ -19,7 +19,8 @@ var txtStdout *tview.TextView
 var txtStderr *tview.TextView
 var UIselectedConfigPath string
 var UItmpConfigPath string
-var currentSelector int = 1
+var currentMainWindowSelector int = 1
+var currentConfigWindowSelector int = 1
 
 func InitUI() {
 	UIapp = tview.NewApplication()
@@ -43,7 +44,7 @@ func MainWindow() {
 	 */
 	txtInfoTitle := tview.NewTextView().
 		SetDynamicColors(true).
-		SetText("Press tab to navigate between log box | Up and Down arrow to scroll").
+		SetText("Press tab to navigate between log panels | Up and Down arrow to scroll text").
 		SetTextAlign(tview.AlignCenter)
 
 	/*
@@ -91,17 +92,17 @@ func MainWindow() {
 
 	grid.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyTab {
-			switch currentSelector {
+			switch currentMainWindowSelector {
 			case 1:
-				currentSelector++
+				currentMainWindowSelector++
 				UIapp.SetFocus(txtStdout)
 				txtInfoTitle.SetText("Selected box: Informations messages")
 			case 2:
-				currentSelector++
+				currentMainWindowSelector++
 				UIapp.SetFocus(txtStderr)
 				txtInfoTitle.SetText("Selected box: Error messages")
 			case 3:
-				currentSelector = 1
+				currentMainWindowSelector = 1
 				UIapp.SetFocus(txtMatchs)
 				txtInfoTitle.SetText("Selected box: Matchs messages")
 			}
@@ -123,6 +124,14 @@ func OpenFileDialog() {
 	 * TEXTVIEW : Dialog title
 	 */
 	lblDialog := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetText("Fastfinder : Please select a yaml configuration file")
+
+	/*
+	 * TEXTVIEW : selection box helper
+	 */
+	txtInfoTitle := tview.NewTextView().
+		SetDynamicColors(true).
+		SetText("Press tab to navigate between left and right pane | Up and Down arrow to scroll in file preview").
+		SetTextAlign(tview.AlignCenter)
 
 	/*
 	 * TEXTVIEW : File preview
@@ -220,16 +229,41 @@ func OpenFileDialog() {
 			}
 
 		}
-
 	})
-
 	/*
 	 * Building window
 	 */
-	grid := tview.NewGrid().SetRows(1, -1).SetColumns(-3, -2).SetBorders(true)
+	grid := tview.NewGrid().SetRows(1, -1, 1).SetColumns(-3, -2).SetBorders(true)
 	grid.AddItem(lblDialog, 0, 0, 1, 2, 0, 0, false)
 	grid.AddItem(treeView, 1, 0, 1, 1, 0, 0, true)
 	grid.AddItem(textPreview, 1, 1, 1, 1, 0, 0, false)
+	grid.AddItem(txtInfoTitle, 2, 0, 1, 2, 0, 0, false)
+
+	grid.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyTab {
+			switch currentConfigWindowSelector {
+			case 1:
+				currentConfigWindowSelector++
+				UIapp.SetFocus(textPreview)
+				txtInfoTitle.SetText("Selected box: Config file preview")
+			case 2:
+				currentConfigWindowSelector = 1
+				UIapp.SetFocus(treeView)
+				txtInfoTitle.SetText("Selected box: File browser")
+			}
+			return nil
+		}
+
+		if event.Key() == tcell.KeyEnter {
+			if currentConfigWindowSelector == 2 {
+				currentConfigWindowSelector = 1
+				UIapp.SetFocus(treeView)
+				txtInfoTitle.SetText("Selected box: File browser")
+			}
+		}
+
+		return event
+	})
 
 	AppStarted = true
 	if err := UIapp.SetRoot(grid, true).SetFocus(treeView).Run(); err != nil {
