@@ -7,7 +7,7 @@ _FastFinder_ was originally designed for Windows platform but it also work perfe
 Please ensure having:
 * Go >= 1.17
 * GOPATH / GOOS / GOARCH correctly set 
-* administrator rights to insall 
+* administrator rights to install 
 
 ## Compile YARA
 
