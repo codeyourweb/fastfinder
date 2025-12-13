@@ -22,6 +22,7 @@ type Configuration struct {
 	Options            Options            `yaml:"options"`
 	Output             Output             `yaml:"output"`
 	AdvancedParameters AdvancedParameters `yaml:"advancedparameters"`
+	EventForwarding    ForwardingConfig   `yaml:"eventforwarding"`
 }
 
 type Input struct {

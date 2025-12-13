@@ -108,7 +108,8 @@ fastfinder [OPTIONS]
 
 ### Scan and export file match according to your needs
 configuration examples are available [there](./examples)
-``` 
+
+```yaml 
 input:
     path: [] # match file path AND / OR file name based on simple string 
     content:
@@ -128,8 +129,34 @@ output:
 advancedparameters:
     yaraRC4Key: ''    # yara rules can be (un)/ciphered using the specified RC4 key
     maxScanFilesize: 2048 #  ignore files up to maxScanFileSize Mb (default: 2048)               
-    cleanMemoryIfFileGreaterThanSize: 512 # clean fastfinder internal memory after heavy file scan (default: 512Mb) 
+    cleanMemoryIfFileGreaterThanSize: 512 # clean fastfinder internal memory after heavy file scan (default: 512Mb)
+eventforwarding:
+  enabled: true
+  buffer_size: 5
+  flush_time_seconds: 10
+  file:
+    enabled: true
+    directory_path: "./event_logs"
+    rotate_minutes: 1    # Rotate every minute for testing
+    max_file_size_mb: 1  # Rotate at 1MB for testing
+    retain_files: 5      # Keep 5 old files
+  http:
+    enabled: false
+	  url: "https://your-forwarder-url.com/api/events"
+	  ssl_verify: false
+	  timeout_seconds: 10
+	  headers:
+      Authorization: "Bearer YOUR_API_KEY"
+      MY-CUSTOM-HEADER: "My-Header-Value"
+	  retry_count: 3
+  filters:
+    min_severity: "info"
+    event_types:
+      - "error"
+      - "alert" 
+      - "info"
 ``` 
+
 ### Search everywhere or in specified paths:
 * use '?' in paths for simple char wildcard (eg. powershe??.exe)
 * use '\\\*' in paths for multiple chars wildcard (eg. \\\*.exe)
@@ -161,7 +188,7 @@ cd fastfinder
 
 # Install dependencies (see compilation guides)
 # Build from source
-go build -tags yara_static -a -ldflags '-s -w' .
+go build -tags yara_static,gio -a -ldflags '-s -w' .
 
 # Run tests
 go test ./...
@@ -169,7 +196,7 @@ go test ./...
 
 ## 📜 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the AGPL License - see the [LICENSE](LICENSE) file for details.
 
 ## 🚀 Support
 
@@ -188,6 +215,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 * **Hilko Bengen (@hillu)** for his wonderful [yara implementation in Go](https://github.com/hillu/go-yara) and also for his precious help debugging CGO issues 
 * **Marc Ochsenmeier** for his precious help, feedbacks but also for having talking on my project
 * **Vitali Kremez** ✝ for inspiring me on many aspects that made me build fastfinder
+* **m0n4** (https://github.com/m0n4) for regularly challenging me technically and contributing much more to the birth of this project than he could ever imagine.
 ---
 
 **Made with ❤️ by the cybersecurity community**  

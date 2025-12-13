@@ -244,6 +244,21 @@ func FileAnalyzeYaraMatch(path string, rules *yara.Rules, maxFileSizeScan int, c
 		LogMessage(LOG_ALERT, " | path:", path)
 		LogMessage(LOG_ALERT, " | rule namespace:", result[i].Namespace)
 		LogMessage(LOG_ALERT, " | rule name:", result[i].Rule)
+
+		// Forward YARA match event
+		metadata := map[string]string{
+			"rule_namespace": result[i].Namespace,
+			"rule_name":      result[i].Rule,
+			"file_path":      path,
+		}
+
+		// Get file size if possible
+		if fileInfo, err := os.Stat(path); err == nil {
+			metadata["file_size"] = fmt.Sprintf("%d", fileInfo.Size())
+			ForwardAlertEvent(result[i].Rule, path, fileInfo.Size(), "", metadata)
+		} else {
+			ForwardAlertEvent(result[i].Rule, path, 0, "", metadata)
+		}
 	}
 
 	return len(result) > 0

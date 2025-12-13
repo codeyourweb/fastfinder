@@ -58,7 +58,7 @@ func FindInFilesContent(files *[]string, patterns []string, rules *yara.Rules, h
 
 		// cancel analysis if file size is greater than maxScanFilesize
 		if len(b) > 1024*1024*maxScanFilesize {
-			LogMessage(LOG_ERROR, "(ERROR)", fmt.Sprintf("File %s size is greater than %dMb, skipping", path, maxScanFilesize))
+			LogMessage(LOG_WARNING, "(WARNING)", fmt.Sprintf("File %s size is greater than %dMb, skipping", path, maxScanFilesize))
 			continue
 		}
 
@@ -90,10 +90,8 @@ func FindInFilesContent(files *[]string, patterns []string, rules *yara.Rules, h
 
 			// output yara match results
 			for i := 0; i < len(yaraResult); i++ {
-				LogMessage(LOG_ALERT, "(ALERT)", "YARA match:")
-				LogMessage(LOG_ALERT, " | path:", path)
-				LogMessage(LOG_ALERT, " | rule namespace:", yaraResult[i].Namespace)
-				LogMessage(LOG_ALERT, " | rule name:", yaraResult[i].Rule)
+				message := fmt.Sprintf("YARA match | path: %s | rule namespace: %s | rule name: %s", path, yaraResult[i].Namespace, yaraResult[i].Rule)
+				LogMessage(LOG_ALERT, "(ALERT)", message)
 			}
 		}
 
