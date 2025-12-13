@@ -1,56 +1,206 @@
-# Compiling instruction for _FastFinder_ on Windows
+# Windows Compilation Guide
 
-_FastFinder_ was originally designed for Windows platform but it's a little bit tricky to compile because it's strongly dependant of go-yara and CGO. Here's a little step by step guide: 
+![Windows](https://img.shields.io/badge/Platform-Windows-blue?style=for-the-badge&logo=windows)
+![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?style=for-the-badge&logo=go)
+![GCC](https://img.shields.io/badge/Compiler-GCC-red?style=for-the-badge&logo=gnu)
 
-## Before installation
+## 📝 Overview
 
-All the installation process will be done with msys2/mingw terminal. In order to avoid any error, you have to ensure that your installation directories don't contains space or special characters. I haven't tested to install as a simple user, I strongly advise you to install everything with admin privileges on top of your c:\ drive.
+This guide walks you through compiling FastFinder from source on Windows. The process requires setting up a complete CGO environment with YARA dependencies.
 
-For the configurations and examples below, my install paths are:
+> ⚠️ **Important**: FastFinder depends on [go-yara](https://github.com/hillu/go-yara) and CGO, which requires specific compiler configurations.
 
-* GO: c:\Go
-* GOPATH: C:\Users\myuser\go
-* Msys2: c:\msys64
-* Git: c:\Git 
+## ⚙️ Prerequisites
 
-## Install msys2 and dependencies:
+### System Requirements
 
-First of all, note that you won't be able to get _FastFinder_ working if the dependencies are compiled with another compiler than GCC. There is currently some problems with CGO when external libraries are compiled with Visual C++, so no need to install Visual Studio or vcpkg.
+- **Windows 10/11** (64-bit recommended)
+- **Administrator privileges** for installation
+- **8GB+ RAM** for compilation process
+- **2GB+ free disk space**
 
-* Download msys2 [from the official website](https://www.msys2.org/) and install it
-* there, you will find two distincts binaries shorcut "MSYS2 MSYS" and "MSYS2 MinGW 64bits". Please launch this second one.
-* install dependencies with the following command line: `pacman -S mingw-w64-x86_64-toolchain mingw-w64-x86_64-pkg-config base-devel openssl-devel`
-* add environment variables in mingw terminal: `export PATH=$PATH:/c/Go/bin:/c/msys64/mingw64/bin:/c/Git/bin`
+### Installation Paths
 
-## Download and compile libyara
+> 🚨 **Critical**: Avoid paths with spaces or special characters
 
-It's strongly advised NOT to clone VirusTotal's YARA repository but to download the source code of the latest release. If you compile libyara from the latest commit, it could generate some side effects when linking this library with _FastFinder_ and GCO.
+| Component | Recommended Path |
+|-----------|------------------|
+| Go | `C:\Go` |
+| GOPATH | `C:\Users\<username>\go` |
+| MSYS2 | `C:\msys64` |
+| Git | `C:\Git` | 
 
-* download latest VirusTotal release source code [from here](https://github.com/VirusTotal/yara/releases)
-* unzip the folder in a directory without space and special char
-* in mingw terminal, go to yara directory (backslash have to be replace with slash eg. cd c:/yara)
-* compile and install using the following command: `./bootstrap.sh &&./configure && make && make install`  
+## 🛠️ Step 1: Install MSYS2 and Dependencies
 
-## Configure your OS
+### 1.1 Download and Install MSYS2
 
-With this step, you won't need to use mingw terminal anymore and you will be able to use Go to install _FastFinder_ and compile your projects directly from Windows cmd / powershell.
+1. **Download MSYS2** from the [official website](https://www.msys2.org/)
+2. **Install to** `C:\msys64` (avoid paths with spaces)
+3. **Launch** `MSYS2 MinGW 64-bit` terminal (not the regular MSYS2 terminal)
 
-Make sure you have the following as system environment variables (not user env vars). If not, create them:
+### 1.2 Install Build Tools
+
+> ⚠️ **Note**: We use GCC instead of Visual Studio due to CGO compatibility requirements
+
+```bash
+# Update package database
+pacman -Sy
+
+# Install essential build tools
+pacman -S mingw-w64-x86_64-toolchain \
+          pkg-config \
+          mingw-w64-x86_64-pkg-config \
+          base-devel \
+          openssl-devel \
+          autoconf \
+          automake \
+          libtool \
+          mingw-w64-x86_64-protobuf-c
 ```
-GOARCH=<your-architecture> (eg. amd64)
+
+### 1.3 Configure Environment
+
+Add these paths to your MinGW environment:
+
+```bash
+export PATH=$PATH:/c/Go/bin:/c/msys64/mingw64/bin:/c/Git/bin
+```
+
+## 🔧 Step 2: Build YARA Library
+
+### 2.1 Download YARA Source
+
+> ⚠️ **Important**: Use official releases, not the latest commit from the repository
+
+1. **Download** the latest stable release from [YARA Releases](https://github.com/VirusTotal/yara/releases)
+2. **Extract** to a path without spaces (e.g., `C:\yara-4.x.x`)
+
+### 2.2 Compile YARA
+
+In the **MSYS2 MinGW 64-bit** terminal:
+
+```bash
+# Navigate to YARA directory (use forward slashes)
+cd /c/yara-4.x.x
+
+# Generate build scripts
+./bootstrap.sh
+
+# Configure build (install to MinGW prefix)
+./configure --prefix=/mingw64
+
+# Compile (this may take several minutes)
+make
+
+# Install libraries
+make install
+```
+
+### 2.3 Verify Installation
+
+```bash
+# Check if YARA is properly installed
+pkg-config --cflags --libs yara
+
+# Test YARA binary
+yara --version
+```
+## 🌐 Step 3: Configure System Environment
+
+### 3.1 System Environment Variables
+
+Add these to your **System Environment Variables** (not user variables):
+
+```cmd
+GOARCH=amd64
 GOOS=windows
 CGO_CFLAGS=-IC:/msys64/mingw64/include
 CGO_LDFLAGS=-LC:/msys64/mingw64/lib -lyara -lcrypto
 PKG_CONFIG_PATH=C:/msys64/mingw64/lib/pkgconfig
 ```
-You also need C:\msys64\mingw64\bin in your system PATH env vars.
 
-Make sure you have got the following user environment var (not system var):
+### 3.2 Update System PATH
 
-    GOPATH=%USERPROFILE%\go
+Add to your **System PATH** environment variable:
 
-Note that paths must be written with slashs and not backslash. As already said, don't use path with spaces or special characters.
+```
+C:\msys64\mingw64\bin
+C:\Go\bin
+```
 
-## Download, Install and compile FastFinder
-Now, from Windows cmd or Powershell, you can install _FastFinder_: `go get github.com/codeyourweb/fastfinder`
-Compilation should be done with: `go build -tags yara_static -a -ldflags '-extldflags "-static"' .` 
+### 3.3 User Environment Variables
+
+Set this **User Environment Variable**:
+
+```cmd
+GOPATH=%USERPROFILE%\go
+```
+
+> 📝 **Note**: Use forward slashes in CGO flags, backslashes in PATH variables
+
+## 🚀 Step 4: Build FastFinder
+
+### 4.1 Download Source Code
+
+```bash
+# Option 1: Using go get (from any command prompt)
+go get github.com/codeyourweb/fastfinder
+cd %GOPATH%\src\github.com\codeyourweb\fastfinder
+
+# Option 2: Clone directly
+git clone https://github.com/codeyourweb/fastfinder.git
+cd fastfinder
+```
+
+### 4.2 Compile FastFinder
+
+```bash
+# Build with static linking
+go build -tags yara_static -a -ldflags '-extldflags "-static"' .
+
+# Build optimized release version
+go build -tags yara_static -a -ldflags '-s -w -extldflags "-static"' .
+```
+
+### 4.3 Verify Build
+
+```bash
+# Test the executable
+.\fastfinder.exe --help
+
+# Check dependencies (should show minimal external deps)
+dumpbin /dependents fastfinder.exe
+```
+
+## ✨ Troubleshooting
+
+### Common Issues
+
+| Issue | Solution |
+|-------|----------|
+| `cgo: C compiler "gcc" not found` | Ensure MinGW64 is in PATH |
+| `pkg-config not found` | Install `mingw-w64-x86_64-pkg-config` |
+| `yara.h: No such file` | Verify CGO_CFLAGS points to correct include path |
+| `undefined reference to 'yr_*'` | Check CGO_LDFLAGS and YARA installation |
+| `access denied` during build | Run as administrator or check antivirus settings |
+
+### Verification Commands
+
+```bash
+# Verify environment
+echo $CGO_CFLAGS
+echo $CGO_LDFLAGS
+echo $PKG_CONFIG_PATH
+
+# Test CGO compilation
+go env CGO_ENABLED  # should return "1"
+
+# Test YARA linking
+pkg-config --exists yara && echo "YARA found" || echo "YARA missing"
+```
+
+---
+
+🚀 **Success!** You should now have a working `fastfinder.exe` binary.
+
+🔗 **Next Steps**: See the main [README](README.md) for usage instructions and examples. 

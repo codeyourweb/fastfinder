@@ -15,15 +15,15 @@ jobs:
           msystem: MSYS
           path-type: minimal
           update: true
-          install: mingw-w64-x86_64-toolchain mingw-w64-x86_64-pkg-config base-devel openssl-devel autoconf automake libtool unzip
+          install: mingw-w64-x86_64-toolchain mingw-w64-x86_64-pkg-config pkg-config base-devel openssl-devel autoconf automake libtool unzip
       - name: Install YARA v4.1
         run: |
-             wget -c https://github.com/VirusTotal/yara/archive/refs/tags/v4.1.3.zip -O /tmp/yara.zip
+             wget -c https://github.com/VirusTotal/yara/archive/refs/tags/v4.5.5.zip -O /tmp/yara.zip
              cd /tmp && unzip yara.zip
-             cd /tmp/yara-4.1.3
+             cd /tmp/yara-4.5.5
              export PATH=${PATH}:/c/msys64/mingw64/bin:/c/msys64/mingw64/lib:/c/msys64/mingw64/lib/pkgconfig
              ./bootstrap.sh
-             ./configure
+             ./configure --prefix=/mingw64
              make
              make install
              cp -r libyara/include/* /c/msys64/mingw64/include
@@ -32,7 +32,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-            go-version: 1.17
+            go-version: 1.24
       - uses: actions/checkout@v2
       - name: Building Fastfinder
         shell: powershell
