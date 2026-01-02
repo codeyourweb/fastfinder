@@ -27,6 +27,10 @@ jobs:
           wget --no-verbose -O- https://github.com/VirusTotal/yara/archive/v${YARA_VERSION}.tar.gz | tar -C /tmp -xzf -
           ( cd /tmp/yara-${YARA_VERSION} && ./bootstrap.sh && sudo ./configure && sudo make && sudo make install )
       - uses: actions/checkout@v2
+      - name: Run Unit Tests
+        run: |
+           sudo ldconfig
+           go test ./... -v
       - name: Building Fastfinder
         run: |
            go build -trimpath -tags yara_static -a -ldflags '-s -w -extldflags "-static"' .
