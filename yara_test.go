@@ -7,7 +7,7 @@ import (
 )
 
 func TestYaraSearchEnumeration(t *testing.T) {
-	r1 := EnumerateYaraInFolders([]string{"../"})
+	r1 := EnumerateYaraInFolders([]string{"./tests/"})
 
 	if len(r1) == 0 {
 		t.Fatal("EnumerateYaraInFolders fails to retrieve test yara rules")
@@ -15,13 +15,13 @@ func TestYaraSearchEnumeration(t *testing.T) {
 }
 
 func TestYaraRuleLoad(t *testing.T) {
-	r1 := CompileYaraRules([]string{"../rule_test_standard.yar"}, "")
+	r1 := CompileYaraRules([]string{"tests/rule_test_standard.yar"}, "")
 
 	if len(r1.GetRules()) != 1 {
 		t.Fatal("CompileYaraRules was unable to compile a YARA rule")
 	}
 
-	r2 := CompileYaraRules([]string{"../rule_test_ciphered.yar"}, "testing")
+	r2 := CompileYaraRules([]string{"tests/rule_test_ciphered.yar"}, "testing")
 
 	if len(r2.GetRules()) != 1 {
 		t.Fatal("CompileYaraRules was unable to compile a RC4 ciphered YARA rule")
@@ -29,7 +29,7 @@ func TestYaraRuleLoad(t *testing.T) {
 }
 
 func TestPerformYaraScan(t *testing.T) {
-	r := CompileYaraRules([]string{"../rule_test_standard.yar"}, "")
+	r := CompileYaraRules([]string{"tests/rule_test_standard.yar"}, "")
 	d := []byte("TestFindInFilesContent")
 	r1, err := PerformYaraScan(&d, r)
 
@@ -39,7 +39,7 @@ func TestPerformYaraScan(t *testing.T) {
 }
 
 func TestYaraMatchAndResultOutput(t *testing.T) {
-	r := CompileYaraRules([]string{"../rule_test_standard.yar"}, "")
+	r := CompileYaraRules([]string{"tests/rule_test_standard.yar"}, "")
 	var buffer bytes.Buffer
 	LogTesting(true)
 	log.SetOutput(&buffer)

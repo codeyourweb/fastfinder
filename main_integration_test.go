@@ -32,7 +32,7 @@ func SkipTestMainWindow(t *testing.T) {
 
 func TestConfigurationFileLoading(t *testing.T) {
 	var config Configuration
-	config.getConfiguration("../config_test_standard.yml")
+	config.getConfiguration("tests/config_test_standard.yml")
 
 	if len(config.Input.Content.Grep) == 0 || config.Input.Content.Grep[0] != "package main" {
 		t.Fatal("config.getConfiguration fails to load and parse configuration file correctly")
@@ -41,7 +41,7 @@ func TestConfigurationFileLoading(t *testing.T) {
 
 func TestRC4CipheredConfigurationFileLoading(t *testing.T) {
 	var config Configuration
-	config.getConfiguration("../config_test_ciphered.yml")
+	config.getConfiguration("tests/config_test_ciphered.yml")
 
 	if len(config.Input.Content.Grep) == 0 || config.Input.Content.Grep[0] != "package main" {
 		t.Fatal("config.getConfiguration fails to load and parse configuration file correctly")

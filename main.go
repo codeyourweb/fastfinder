@@ -30,7 +30,6 @@ func main() {
 	parser := argparse.NewParser("fastfinder", "Fastfinder v"+FASTFINDER_VERSION+" (with YARA "+YARA_VERSION+")"+LineBreak+"\t\t\tIncident Response - Fast suspicious file finder")
 	pConfigPath := parser.String("c", "configuration", &argparse.Options{Required: false, Default: "", Help: "Fastfind configuration file"})
 	pSfxPath := parser.String("b", "build", &argparse.Options{Required: false, Help: "Output a standalone package with configuration and rules in a single binary"})
-	pConsoleUI := parser.Flag("u", "console-ui", &argparse.Options{Required: false, Help: "Display console UI (tview) instead of Gio GUI (only for console mode)"})
 	pSilentMode := parser.Flag("s", "silent", &argparse.Options{Required: false, Help: "Silent mode - run without any visible window or console"})
 	pLogVerbosity := parser.Int("v", "verbosity", &argparse.Options{Required: false, Default: 3, Help: "File log verbosity \n\t\t\t\t | 1: Only alerts\n\t\t\t\t | 2: Alerts and warnings\n\t\t\t\t | 3: Alerts,warnings and errors\n\t\t\t\t | 4: Alerts,warnings,errors and I/O operations\n\t\t\t\t | 5: Full verbosity)\n\t\t\t\t"})
 	pTriage := parser.Flag("t", "triage", &argparse.Options{Required: false, Default: false, Help: "Triage mode (infinite run - scan every new file in the input path directories)"})
@@ -44,11 +43,11 @@ func main() {
 	// Determine if any parameter (other than program name) was provided
 	hasParameters := len(os.Args) > 1
 
-	RunProgramWithParameters(*pConfigPath, *pSfxPath, *pConsoleUI, *pSilentMode, *pLogVerbosity, *pTriage, hasParameters)
+	RunProgramWithParameters(*pConfigPath, *pSfxPath, *pSilentMode, *pLogVerbosity, *pTriage, hasParameters)
 }
 
 // RunProgramWithParameters used specified argv and run fastfinder
-func RunProgramWithParameters(pConfigPath string, pSfxPath string, pConsoleUI bool, pSilentMode bool, pLogVerbosity int, pTriage bool, hasParameters bool) {
+func RunProgramWithParameters(pConfigPath string, pSfxPath string, pSilentMode bool, pLogVerbosity int, pTriage bool, hasParameters bool) {
 	// Silent mode: no output at all
 	if pSilentMode {
 		UIactive = false
@@ -56,46 +55,23 @@ func RunProgramWithParameters(pConfigPath string, pSfxPath string, pConsoleUI bo
 	}
 
 	// Determine mode:
-	// - No parameters at all: Gio GUI mode
-	// - Has parameters but no SFX: Console mode (with optional tview UI)
-	// - Has SFX: Build mode (console)
+	// - No parameters at all: tview UI mode (default)
+	// - Has parameters: Console mode (no UI)
+	// - Has SFX: Build mode (console, no UI)
 
-	useGioMode := !hasParameters && !pSilentMode && len(pSfxPath) == 0
-
-	if useGioMode {
-		// Gio GUI Mode - Launch Gio GUI
-		// Hide console window on Windows for pure GUI experience
-		if runtime.GOOS == "windows" {
-			HideConsoleWindow()
-		}
-		guiApp := NewGuiApp()
-		if len(pConfigPath) > 0 {
-			guiApp.configPath = pConfigPath
-		}
-		guiApp.Run()
-		return
-	}
-
-	// Console Mode (either with tview UI or pure console)
-	if pSilentMode {
+	if pSilentMode || len(pSfxPath) > 0 || hasParameters {
+		// Silent mode, SFX build mode, or has parameters - no UI
 		UIactive = false
-	} else if pConsoleUI {
-		// User explicitly requested console UI (tview)
-		InitUI()
 	} else {
-		// Default pure console mode when parameters are provided
-		UIactive = false
+		// Default: Use tview UI only when no parameters provided
+		InitUI()
 	}
 
 	// display open file dialog when config file empty and UI is active
-	// This works with Gio GUI (no parameters) or console UI (-u flag)
 	if len(pConfigPath) == 0 && UIactive {
 		OpenFileDialog()
 		pConfigPath = UIselectedConfigPath
 	}
-
-	// init progressbar object
-	EnableProgressbar(pSilentMode)
 
 	// configuration parsing
 	var config Configuration
@@ -105,7 +81,7 @@ func RunProgramWithParameters(pConfigPath string, pSfxPath string, pConsoleUI bo
 	}
 
 	// file logging verbosity
-	if pLogVerbosity >= 1 && pLogVerbosity <= 4 {
+	if pLogVerbosity >= 1 && pLogVerbosity <= 5 {
 		loggingVerbosity = pLogVerbosity
 	}
 
@@ -184,11 +160,9 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pNoAdvUI bo
 			time.Sleep(3 * time.Second)
 		}
 
-		EnableProgressbar(false)
-
 		if !pNoAdvUI {
 			UIactive = false
-			LogMessage(LOG_INFO, "(INFO)", "Advanced UI and progressbar disabled for performance enhancements under triage")
+			LogMessage(LOG_INFO, "(INFO)", "Advanced UI disabled for performance enhancements under triage")
 		}
 
 		LogMessage(LOG_INFO, "(INFO)", "TRIAGE MODE - Use Ctrl+C to stop fastfinder")
@@ -199,82 +173,78 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pNoAdvUI bo
 	// start main routine
 	for _, basePath := range baseDrives {
 		LogMessage(LOG_VERBOSE, "(INFO)", "Enumerating files in", basePath)
-		var matchContent []string
-		var matchPathPattern []string
-		filesEnumeration := *ListFilesRecursively(basePath, excludedPaths)
 
 		if runtime.GOOS != "windows" {
 			excludedPaths = append(excludedPaths, basePath)
 		}
 
-		// check for files matching path patterns
-		var filesToScanForContent []string
+		// Prepare path regex patterns
+		var pathRegexPatterns []*regexp2.Regexp
 		if len(config.Input.Path) > 0 {
 			LogMessage(LOG_VERBOSE, "(INFO)", "Checking for paths matchs in", basePath)
-			var pathRegexPatterns []*regexp2.Regexp
 			for _, pattern := range config.Input.Path {
 				re := regexp2.MustCompile(pattern, regexp2.IgnoreCase)
 				pathRegexPatterns = append(pathRegexPatterns, re)
 			}
-			matchPathPattern = *PathsFinder(&filesEnumeration, pathRegexPatterns)
-			if !config.Options.ContentMatchDependsOnPathMatch {
-				for i := 0; i < len(matchPathPattern); i++ {
-					LogMessage(LOG_ALERT, "(ALERT)", "File path match on:", matchPathPattern[i])
-				}
-				// When path match doesn't depend on content, we scan all files
-				filesToScanForContent = filesEnumeration
-			} else {
-				// When content match depends on path match, only scan the path-matching files
-				filesToScanForContent = matchPathPattern
-			}
-		} else {
-			// No path patterns specified, scan all files
-			filesToScanForContent = filesEnumeration
 		}
 
-		// check for file matching content, checksum and yara rules
+		// Create scanner pipeline with buffer for concurrent operations
+		pipeline := NewScannerPipeline(1000)
+
+		// Start enumeration in a separate goroutine
+		LogMessage(LOG_VERBOSE, "(INFO)", "Starting file enumeration in", basePath)
+		pipeline.StartEnumeration([]string{basePath}, excludedPaths)
+
+		// Start scanning based on configuration
 		if len(config.Input.Content.Grep) > 0 || len(config.Input.Content.Checksum) > 0 || len(config.Input.Content.Yara) > 0 {
-			LogMessage(LOG_VERBOSE, "(INFO)", "Checking for content, checksum and YARA rules matchs in", basePath)
-
-			if len(filesToScanForContent) == 0 {
-				LogMessage(LOG_VERBOSE, "(INFO)", "No files to scan with YARA in", basePath)
-			} else {
-				matchContent = *FindInFilesContent(&filesToScanForContent, config.Input.Content.Grep, rules, config.Input.Content.Checksum, false, config.AdvancedParameters.MaxScanFilesize, config.AdvancedParameters.CleanMemoryIfFileGreaterThanSize)
-			}
+			LogMessage(LOG_VERBOSE, "(INFO)", "Starting content scanning in", basePath)
+			pipeline.StartScanning(
+				config.Input.Content.Grep,
+				rules,
+				config.Input.Content.Checksum,
+				config.AdvancedParameters.MaxScanFilesize,
+				config.AdvancedParameters.CleanMemoryIfFileGreaterThanSize,
+				pathRegexPatterns,
+				config.Options.ContentMatchDependsOnPathMatch)
+		} else if len(pathRegexPatterns) > 0 {
+			// Only path scanning, no content scanning
+			LogMessage(LOG_VERBOSE, "(INFO)", "Starting path pattern matching in", basePath)
+			pipeline.StartScanningPathOnly(pathRegexPatterns)
 		}
+
+		// Collect matches as they are found
+		var matchingFiles []string
+		matchesDone := make(chan bool, 1)
+		go func() {
+			for match := range pipeline.GetMatches() {
+				if !Contains(matchingFiles, match) {
+					matchingFiles = append(matchingFiles, match)
+				}
+			}
+			matchesDone <- true
+		}()
+
+		// Wait for enumeration and scanning to complete
+		pipeline.WaitEnumeration()
+		pipeline.WaitScanning()
+		pipeline.WaitAll()
+
+		// Wait for matches collection to complete
+		<-matchesDone
 
 		// listing and copy matching files
 		LogMessage(LOG_INFO, "(INFO)", "scan finished in", basePath)
-		if (len(matchPathPattern) > 0 && !config.Options.ContentMatchDependsOnPathMatch) || len(matchContent) > 0 {
+		if len(matchingFiles) > 0 {
 			LogMessage(LOG_ALERT, "(INFO)", "Matching files: ")
-			// output pattern matchs
-			if !config.Options.ContentMatchDependsOnPathMatch {
-				for i := 0; i < len(matchPathPattern); i++ {
-					LogMessage(LOG_ALERT, " |", matchPathPattern[i])
-				}
-			}
-
-			// output content, checksum and yara match
-			for i := 0; i < len(matchContent); i++ {
-				LogMessage(LOG_ALERT, " |", matchContent[i])
+			for i := 0; i < len(matchingFiles); i++ {
+				LogMessage(LOG_ALERT, " |", matchingFiles[i])
 			}
 
 			// copy file matchs
 			if config.Output.CopyMatchingFiles {
 				LogMessage(LOG_INFO, "(INFO)", "Copy all matching files")
-				if !config.Options.ContentMatchDependsOnPathMatch {
-					InitProgressbar(int64(len(matchPathPattern)) + int64(len(matchContent)))
-					for i := 0; i < len(matchPathPattern); i++ {
-						ProgressBarStep()
-						FileCopy(matchPathPattern[i], config.Output.FilesCopyPath, config.Output.Base64Files)
-					}
-				} else {
-					InitProgressbar(int64(len(matchContent)))
-				}
-
-				for i := 0; i < len(matchContent); i++ {
-					ProgressBarStep()
-					FileCopy(matchContent[i], config.Output.FilesCopyPath, config.Output.Base64Files)
+				for i := 0; i < len(matchingFiles); i++ {
+					FileCopy(matchingFiles[i], config.Output.FilesCopyPath, config.Output.Base64Files)
 				}
 			}
 		} else {
@@ -325,7 +295,6 @@ func FastFinderInit(config Configuration, pConfigPath string, pSfxPath string) {
 		admin, elevated := CheckCurrentUserPermissions()
 		if !admin && !elevated {
 			LogMessage(LOG_ERROR, "(WARNING) fastfinder is not running with fully elevated righs. Notice that the analysis will be partial and limited to the current user scope")
-			time.Sleep(3 * time.Second)
 		}
 	}
 }

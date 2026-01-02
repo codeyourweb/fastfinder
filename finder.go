@@ -19,11 +19,9 @@ import (
 
 // PathsFinder try to match regular expressions in file paths slice
 func PathsFinder(files *[]string, patterns []*regexp2.Regexp) *[]string {
-	InitProgressbar(int64(len(*files)))
 	var matchingFiles []string
 	for _, expression := range patterns {
 		for _, f := range *files {
-			ProgressBarStep()
 			if match, _ := expression.MatchString(f); match {
 				matchingFiles = append(matchingFiles, f)
 			}
@@ -37,9 +35,7 @@ func PathsFinder(files *[]string, patterns []*regexp2.Regexp) *[]string {
 func FindInFilesContent(files *[]string, patterns []string, rules *yara.Rules, hashList []string, triageMode bool, maxScanFilesize int, cleanMemoryIfFileGreaterThanSize int) *[]string {
 	var matchingFiles []string
 
-	InitProgressbar(int64(len(*files)))
 	for _, path := range *files {
-		ProgressBarStep()
 		b, err := ioutil.ReadFile(path)
 		if err != nil {
 			if triageMode {

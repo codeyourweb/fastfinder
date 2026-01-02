@@ -21,7 +21,6 @@ var loggingVerbosity int = 3
 var loggingPath string = ""
 var loggingFile *os.File
 var unitTesting bool
-var guiLogOutput func(logType int, prefix string, message ...interface{})
 
 func LogTesting(testing bool) {
 	unitTesting = testing
@@ -52,13 +51,8 @@ func LogMessage(logType int, logMessage ...interface{}) {
 		ForwardEvent("info", "low", message, nil)
 	}
 
-	// Check if GUI mode is active (Gio)
-	if guiLogOutput != nil {
-		currentTime := time.Now().UTC()
-		timestampedMessage := "[" + currentTime.Format("2006-01-02 15:04:05") + " UTC] " + message
-		guiLogOutput(logType, "", timestampedMessage)
-	} else if UIactive && AppStarted && !unitTesting {
-		// Console tview mode - apply verbosity filtering
+	// tview mode - apply verbosity filtering
+	if UIactive && AppStarted && !unitTesting {
 		shouldDisplay := false
 		switch logType {
 		case LOG_ALERT:
