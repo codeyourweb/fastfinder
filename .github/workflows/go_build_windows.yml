@@ -50,14 +50,14 @@ jobs:
         run: |
           export PKG_CONFIG_PATH="/mingw64/lib/pkgconfig:$PKG_CONFIG_PATH"
           export CGO_CFLAGS="-I/mingw64/include"
-          export CGO_LDFLAGS="-L/mingw64/lib -lyara -ljansson -lmagic -lssl -lcrypto -lws2_32 -lcrypt32"
+          export CGO_LDFLAGS="-L/mingw64/lib -lyara -ljansson -lmagic -lssl -lcrypto -lshlwapi -lregex -lws2_32 -lcrypt32"
           cd $GITHUB_WORKSPACE
           go test ./... -v
       - name: Building Fastfinder
         run: |
           export PKG_CONFIG_PATH="/mingw64/lib/pkgconfig:$PKG_CONFIG_PATH"
           export CGO_CFLAGS="-I/mingw64/include"
-          export CGO_LDFLAGS="-L/mingw64/lib -lyara -ljansson -lmagic -lssl -lcrypto -lws2_32 -lcrypt32"
+          export CGO_LDFLAGS="-L/mingw64/lib -lyara -ljansson -lmagic -lssl -lcrypto -lshlwapi -lregex -lws2_32 -lcrypt32"
           export GOOS="windows"
           export GOARCH="amd64"
           cd $GITHUB_WORKSPACE

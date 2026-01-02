@@ -44,7 +44,7 @@ func RenderFastfinderLogo() string {
 	txtLogo += " |__   /\\  /__`  |  |__  | |\\ | |  \\ |__  |__) " + LineBreak
 	txtLogo += " |    /~~\\ .__/  |  |    | | \\| |__/ |___ |  \\ " + LineBreak
 	txtLogo += "                                                  " + LineBreak
-	txtLogo += "  2021-2022 | Jean-Pierre GARNIER | @codeyourweb  " + LineBreak
+	txtLogo += "  2021-2026 | Jean-Pierre GARNIER | @codeyourweb  " + LineBreak
 	txtLogo += "  https://github.com/codeyourweb/fastfinder       " + LineBreak
 	return txtLogo
 }

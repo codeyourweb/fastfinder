@@ -83,10 +83,11 @@ fastfinder [OPTIONS]
 
 ### Verbosity Levels
 
-- **Level 4**: Alerts only
+- **Level 1**: Alerts only
+- **Level 2**: Alerts and warnings
 - **Level 3**: Alerts and errors (default)
-- **Level 2**: Alerts, errors, and I/O operations  
-- **Level 1**: Full verbosity
+- **Level 4**: Alerts, errors, and I/O operations  
+- **Level 5**: Full verbosity (for debug purpose or really advanced logging)
 
 ### Quick Examples
 
@@ -219,4 +220,4 @@ This project is licensed under the AGPL License - see the [LICENSE](LICENSE) fil
 ---
 
 **Made with ❤️ by the cybersecurity community**  
-Created by Jean-Pierre GARNIER (@codeyourweb) • 2021-2025
+Created by Jean-Pierre GARNIER (@codeyourweb) • 2021-2026
