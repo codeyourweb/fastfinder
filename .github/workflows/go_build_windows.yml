@@ -12,23 +12,29 @@ jobs:
       - name: Install MSYS2
         uses: msys2/setup-msys2@v2
         with:
-          msystem: MSYS
-          path-type: minimal
+          msystem: MINGW64
+          path-type: inherit
           update: true
-          install: mingw-w64-x86_64-toolchain mingw-w64-x86_64-pkg-config pkg-config base-devel openssl-devel autoconf automake libtool unzip
-      - name: Install YARA v4.1
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-pkg-config
+            base-devel
+            autoconf
+            automake
+            libtool
+            make
+            unzip
+            wget
+      - name: Install YARA v4.5.5
         run: |
              wget -c https://github.com/VirusTotal/yara/archive/refs/tags/v4.5.5.zip -O /tmp/yara.zip
              cd /tmp && unzip yara.zip
              cd /tmp/yara-4.5.5
-             export PATH=${PATH}:/c/msys64/mingw64/bin:/c/msys64/mingw64/lib:/c/msys64/mingw64/lib/pkgconfig
              ./bootstrap.sh
-             ./configure --prefix=/mingw64
-             make
+             ./configure --prefix=/mingw64 --enable-static --disable-shared
+             make -j$(nproc)
              make install
-             cp -r libyara/include/* /c/msys64/mingw64/include
-             cp -r libyara/.libs/* /c/msys64/mingw64/lib
-             cp libyara/yara.pc /c/msys64/mingw64/lib/pkgconfig
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
