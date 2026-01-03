@@ -106,8 +106,7 @@ func TestFileOutputConfigStructure(t *testing.T) {
 // TestEventFiltersStructure tests the EventFilters structure
 func TestEventFiltersStructure(t *testing.T) {
 	filters := EventFilters{
-		EventTypes:  []string{"alert", "error", "scan_complete"},
-		MinSeverity: "medium",
+		EventTypes: []string{"alert", "error", "scan_complete"},
 	}
 
 	if len(filters.EventTypes) != 3 {
@@ -116,10 +115,6 @@ func TestEventFiltersStructure(t *testing.T) {
 
 	if filters.EventTypes[0] != "alert" {
 		t.Fatal("First event type incorrect")
-	}
-
-	if filters.MinSeverity != "medium" {
-		t.Fatal("Min severity not set correctly")
 	}
 }
 
@@ -192,17 +187,12 @@ func TestForwardingConfigWithFilters(t *testing.T) {
 		Enabled:    true,
 		BufferSize: 256,
 		Filters: EventFilters{
-			EventTypes:  []string{"error", "critical"},
-			MinSeverity: "high",
+			EventTypes: []string{"error", "critical"},
 		},
 	}
 
 	if len(config.Filters.EventTypes) != 2 {
 		t.Fatal("Filters event types not set")
-	}
-
-	if config.Filters.MinSeverity != "high" {
-		t.Fatal("Filter severity not set")
 	}
 }
 
@@ -262,7 +252,6 @@ func TestEventFiltersMultipleTypes(t *testing.T) {
 			"scan_complete",
 			"match_found",
 		},
-		MinSeverity: "low",
 	}
 
 	if len(filters.EventTypes) != 7 {
@@ -308,8 +297,7 @@ func TestForwardingConfigComplex(t *testing.T) {
 			RetainFiles:   90,
 		},
 		Filters: EventFilters{
-			EventTypes:  []string{"error", "critical", "match_found"},
-			MinSeverity: "medium",
+			EventTypes: []string{"error", "critical", "match_found"},
 		},
 	}
 

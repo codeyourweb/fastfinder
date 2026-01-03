@@ -81,8 +81,7 @@ type FileOutputConfig struct {
 
 // EventFilters represents filtering configuration for events
 type EventFilters struct {
-	EventTypes  []string `yaml:"event_types"`  // ["alert", "error", "info", "scan_start", "scan_complete"]
-	MinSeverity string   `yaml:"min_severity"` // "low", "medium", "high", "critical"
+	EventTypes []string `yaml:"event_types"` // ["alert", "error", "info", "scan_start", "scan_complete"]
 }
 
 // Global event forwarder instance
@@ -235,23 +234,6 @@ func (ef *EventForwarder) shouldForwardEvent(eventType, severity string) bool {
 			}
 		}
 		if !found {
-			return false
-		}
-	}
-
-	// Check minimum severity
-	if ef.config.Filters.MinSeverity != "" {
-		severityLevels := map[string]int{
-			"low":      1,
-			"medium":   2,
-			"high":     3,
-			"critical": 4,
-		}
-
-		minLevel := severityLevels[ef.config.Filters.MinSeverity]
-		currentLevel := severityLevels[severity]
-
-		if currentLevel < minLevel {
 			return false
 		}
 	}

@@ -85,21 +85,20 @@ func LogMessage(logType int, logMessage ...interface{}) {
 		}
 	} else {
 		// Pure console mode - check verbosity for console output
-		// New verbosity: 1=alerts only, 2=alerts+warnings, 3=alerts+warnings+errors, 4=alerts+warnings+errors+info, 5=full
 		shouldDisplay := false
 		switch logType {
 		case LOG_ALERT:
-			shouldDisplay = (loggingVerbosity >= 1) // Display if verbosity 1 or higher
+			shouldDisplay = (loggingVerbosity >= 1)
 		case LOG_WARNING:
-			shouldDisplay = (loggingVerbosity >= 2) // Display if verbosity 2 or higher
+			shouldDisplay = (loggingVerbosity >= 2)
 		case LOG_ERROR:
-			shouldDisplay = (loggingVerbosity >= 3) // Display if verbosity 3 or higher
+			shouldDisplay = (loggingVerbosity >= 3)
 		case LOG_INFO:
-			shouldDisplay = (loggingVerbosity >= 4) // Display if verbosity 4 or higher
+			shouldDisplay = (loggingVerbosity >= 4)
 		case LOG_VERBOSE:
-			shouldDisplay = (loggingVerbosity >= 5) // Display if verbosity 5 (full)
+			shouldDisplay = (loggingVerbosity >= 5)
 		case LOG_EXIT:
-			shouldDisplay = true // Always display exit messages
+			shouldDisplay = true
 		}
 
 		if shouldDisplay && !unitTesting {
@@ -135,11 +134,6 @@ func LogToFile(logType int, message string) {
 		}
 	}
 
-	// New verbosity logic: lower numbers = higher importance
-	// logType 1 (ALERT) should be logged at verbosity 1,2,3,4
-	// logType 2 (ERROR) should be logged at verbosity 2,3,4
-	// logType 3 (INFO) should be logged at verbosity 3,4
-	// logType 4 (VERBOSE) should be logged at verbosity 4
 	if logType == LOG_EXIT || logType <= loggingVerbosity {
 		if _, err := loggingFile.WriteString(message + "\n"); err != nil {
 			loggingPath = ""

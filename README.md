@@ -135,13 +135,13 @@ eventforwarding:
   enabled: true
   buffer_size: 5
   flush_time_seconds: 10
-  file:
+  file: # save app activity in jsonl files
     enabled: true
     directory_path: "./event_logs"
     rotate_minutes: 1    # Rotate every minute for testing
     max_file_size_mb: 1  # Rotate at 1MB for testing
     retain_files: 5      # Keep 5 old files
-  http:
+  http: # forward app activity with HTTP POST json data
     enabled: false
 	  url: "https://your-forwarder-url.com/api/events"
 	  ssl_verify: false
@@ -151,9 +151,9 @@ eventforwarding:
       MY-CUSTOM-HEADER: "My-Header-Value"
 	  retry_count: 3
   filters:
-    min_severity: "info"
     event_types:
       - "error"
+      - "warning"
       - "alert" 
       - "info"
 ``` 
