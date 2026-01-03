@@ -1,0 +1,59 @@
+# Reference: https://cloud.google.com/blog/topics/threat-intelligence/threat-actors-exploit-react2shell-cve-2025-55182?hl=en
+input:
+    path: []
+    content:
+        grep: 
+          - "reactcdn.windowserrorapis.com"
+          - "82.163.22.139"
+          - "216.158.232.43"
+          - "45.76.155.14"
+        yara:
+          - "./react2shell_compoond.yar"
+          - "./react2shell_minocat.yar"
+          - "./react2shell_snowlight.yar"
+        checksum:
+          - "776850a1e6d6915e9bf35aa83554616129acd94e3a3f6673bd6ddaec530f4273"
+          - "7f05bad031d22c2bb4352bf0b6b9ee2ca064a4c0e11a317e6fedc694de37737a"
+          - "13675cca4674a8f9a8fabe4f9df4ae0ae9ef11986dd1dcc6a896912c7d527274"
+          - "0bc65a55a84d1b2e2a320d2b011186a14f9074d6d28ff9120cb24fcc03c3f696"
+          - "92064e210b23cf5b94585d3722bf53373d54fb4114dca25c34e010d0c010edf3"
+          - "df3f20a961d29eed46636783b71589c183675510737c984a11f78932b177b540"
+options:
+    contentMatchDependsOnPathMatch: true
+    findInHardDrives: true
+    findInRemovableDrives: true
+    findInNetworkDrives: true
+    findInCDRomDrives: true
+output:
+    copyMatchingFiles: false
+    base64Files: false
+    filesCopyPath: ''
+advancedparameters:
+    yaraRC4Key: ''
+    maxScanFilesize: 2048         
+    cleanMemoryIfFileGreaterThanSize: 512
+eventforwarding:
+  enabled: false
+  buffer_size: 5
+  flush_time_seconds: 10
+  file:
+    enabled: false
+    directory_path: "./event_logs"
+    rotate_minutes: 1
+    max_file_size_mb: 1
+    retain_files: 5
+  http:
+    enabled: false
+    url: "https://your-forwarder-url.com/api/events"
+    ssl_verify: false
+    timeout_seconds: 10
+    headers:
+      Authorization: "Bearer YOUR_API_KEY"
+      MY-CUSTOM-HEADER: "My-Header-Value"
+    retry_count: 3
+  filters:
+    event_types:
+      - "error"
+      - "warning"
+      - "alert" 
+      - "info"
