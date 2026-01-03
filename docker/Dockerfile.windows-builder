@@ -1,0 +1,87 @@
+# Windows Binary Builder with YARA Support
+# Cross-compile FastFinder for Windows with YARA using MinGW
+# YARA compiled without OpenSSL support (compile-time rules only, no TLS)
+
+FROM debian:bookworm-slim
+
+# Install build tools
+RUN apt-get update && apt-get install -y \
+    wget \
+    git \
+    build-essential \
+    automake \
+    libtool \
+    pkg-config \
+    ca-certificates \
+    mingw-w64 \
+    mingw-w64-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Go 1.24
+ARG GO_VERSION=1.24.6
+RUN wget https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz && \
+    tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz && \
+    rm go${GO_VERSION}.linux-amd64.tar.gz
+
+ENV PATH="/usr/local/go/bin:${PATH}"
+ENV GOPATH="/go"
+ENV PATH="${GOPATH}/bin:${PATH}"
+
+# Build YARA for Windows with MinGW (without OpenSSL - pure pattern matching)
+ARG YARA_VERSION=4.5.0
+WORKDIR /build
+
+# Build YARA for Windows MinGW (no OpenSSL support)
+RUN wget https://github.com/VirusTotal/yara/archive/v${YARA_VERSION}.tar.gz && \
+    tar -xzf v${YARA_VERSION}.tar.gz && \
+    cd yara-${YARA_VERSION} && \
+    ./bootstrap.sh && \
+    CC=x86_64-w64-mingw32-gcc \
+    CFLAGS="-O2 -I/mingw-w64/x86_64-w64-mingw32/include" \
+    LDFLAGS="-L/mingw-w64/x86_64-w64-mingw32/lib" \
+    ./configure --host=x86_64-w64-mingw32 \
+               --prefix=/mingw-w64/x86_64-w64-mingw32 \
+               --disable-shared \
+               --disable-openssl \
+               --enable-static && \
+    make -j$(nproc) && \
+    make install && \
+    cd .. && rm -rf yara-${YARA_VERSION} v${YARA_VERSION}.tar.gz
+
+WORKDIR /src
+
+# Copy source code
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY *.go ./
+COPY examples ./examples/
+COPY resources ./resources/
+COPY tests ./tests/
+
+# Build FastFinder for Windows AMD64 with YARA (no OpenSSL support)
+ENV CGO_ENABLED=1
+ENV GOOS=windows
+ENV GOARCH=amd64
+ENV CC=x86_64-w64-mingw32-gcc
+ENV CXX=x86_64-w64-mingw32-g++
+ENV CGO_CFLAGS="-I/mingw-w64/x86_64-w64-mingw32/include"
+ENV CGO_LDFLAGS="-L/mingw-w64/x86_64-w64-mingw32/lib -lyara -lws2_32 -static"
+ENV PKG_CONFIG_PATH="/mingw-w64/x86_64-w64-mingw32/lib/pkgconfig"
+ENV PKG_CONFIG_LIBDIR="/mingw-w64/x86_64-w64-mingw32/lib"
+
+RUN mkdir -p /output && \
+    go build -v -ldflags="-s -w" -tags yara_static -o /output/fastfinder-windows-amd64.exe . && \
+    ls -lah /output/
+
+# ========================================
+# Stage 2: Output collector
+# ========================================
+FROM scratch AS binaries
+
+# Copy compiled Windows binary
+COPY --from=0 /output/fastfinder-windows-amd64.exe /
+
+# To extract binary:
+# docker build --target binaries --output type=local,dest=./bin -f docker/Dockerfile.windows-builder .
+

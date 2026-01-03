@@ -33,6 +33,11 @@ func CompileYaraRules(yaraFiles []string, yaraRC4Key string) (rules *yara.Rules)
 		ExitProgram(1, !UIactive)
 	}
 
+	if len(rules.GetRules()) == 0 {
+		LogMessage(LOG_ERROR, "(ERROR)", "No YARA rules compiled - check configuration paths")
+		ExitProgram(1, !UIactive)
+	}
+
 	LogMessage(LOG_VERBOSE, "(INIT)", len(rules.GetRules()), "YARA rules compiled")
 	for _, r := range rules.GetRules() {
 		LogMessage(LOG_INFO, " | rule:", r.Identifier())
@@ -102,7 +107,13 @@ func LoadYaraRules(path []string, rc4key string) (compiler *yara.Compiler, err e
 		return nil, fmt.Errorf("failed to initialize YARA compiler: %s", err.Error())
 	}
 
-	for _, dir := range EnumerateYaraInFolders(path) {
+	allRulePaths := EnumerateYaraInFolders(path)
+	if len(allRulePaths) == 0 {
+		return nil, fmt.Errorf("no YARA rule files found from configuration paths")
+	}
+
+	loadedRules := 0
+	for _, dir := range allRulePaths {
 		var f []byte
 		var err error
 
@@ -135,6 +146,11 @@ func LoadYaraRules(path []string, rc4key string) (compiler *yara.Compiler, err e
 			LogMessage(LOG_ERROR, "(ERROR)", "Could not load rule file ", dir, err)
 			continue
 		}
+		loadedRules++
+	}
+
+	if loadedRules == 0 {
+		return nil, fmt.Errorf("failed to load any YARA rule from provided paths")
 	}
 
 	return compiler, nil

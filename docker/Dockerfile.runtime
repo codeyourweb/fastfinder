@@ -1,0 +1,81 @@
+# Runtime image to execute FastFinder inside a container
+# This Dockerfile builds FastFinder from source (static YARA) and packages
+# a minimal runtime with the tools required for drive detection (lsblk/udevadm).
+
+FROM debian:bookworm-slim AS builder
+
+# Build dependencies
+RUN apt-get update && apt-get install -y \
+    wget \
+    git \
+    build-essential \
+    automake \
+    libtool \
+    pkg-config \
+    libssl-dev \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Go
+ARG GO_VERSION=1.24.6
+RUN wget https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz && \
+    tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz && \
+    rm go${GO_VERSION}.linux-amd64.tar.gz
+ENV PATH="/usr/local/go/bin:${PATH}"
+
+# Build YARA (static)
+ARG YARA_VERSION=4.5.5
+WORKDIR /build
+RUN wget https://github.com/VirusTotal/yara/archive/v${YARA_VERSION}.tar.gz && \
+    tar -xzf v${YARA_VERSION}.tar.gz && \
+    cd yara-${YARA_VERSION} && \
+    ./bootstrap.sh && \
+    ./configure --prefix=/usr/local --enable-static --disable-shared && \
+    make -j$(nproc) && \
+    make install && \
+    ldconfig && \
+    cd .. && rm -rf yara-${YARA_VERSION} v${YARA_VERSION}.tar.gz
+
+# Build FastFinder for Linux AMD64 with static YARA
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY *.go ./
+COPY examples ./examples/
+COPY resources ./resources/
+COPY tests ./tests/
+
+ENV CGO_ENABLED=1
+ENV GOOS=linux
+ENV GOARCH=amd64
+ENV CGO_CFLAGS="-I/usr/local/include"
+ENV CGO_LDFLAGS="-L/usr/local/lib -Wl,-Bstatic -lyara -Wl,-Bdynamic -lssl -lcrypto"
+
+RUN go build -ldflags="-s -w" -tags yara_static -o /tmp/fastfinder .
+
+FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    util-linux \
+    udev \
+    procps \
+    findutils \
+    libssl3 \
+    nano \
+    vim-tiny \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /tmp/fastfinder /usr/local/bin/fastfinder
+COPY examples /opt/fastfinder/examples
+# Keep examples alongside config so default YAML relative paths (./examples/...) work
+COPY examples /config/examples
+
+WORKDIR /config
+VOLUME ["/config", "/scan"]
+ENV FASTFINDER_CONFIG=/config/config.yml
+
+# FastFinder defaults to reading its config; override with CLI flags if needed
+ENTRYPOINT ["/usr/local/bin/fastfinder"]
+CMD ["-c", "/config/config.yml"]

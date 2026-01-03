@@ -9,7 +9,7 @@ input:
         grep:
           - 'fastfinder.exe'
         yara:
-          - './examples/example_rule_windows.yar'
+          - './example_rule_windows.yar'
         checksum:
          - 'c4884dadc3680439e30bf48ae0ca7048'
          - '7A320D69E436911A9EAF676D8C2B6A22580BF79F'

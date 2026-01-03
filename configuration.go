@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -71,6 +72,14 @@ func (c *Configuration) getConfiguration(configFile string) *Configuration {
 	var yamlContent []byte
 	var err error
 	configFile = strings.TrimSpace(configFile)
+	configBaseDir := ""
+
+	if !IsValidUrl(configFile) {
+		if absPath, err := filepath.Abs(configFile); err == nil {
+			configFile = absPath
+			configBaseDir = filepath.Dir(absPath)
+		}
+	}
 
 	// configuration reading
 	if IsValidUrl(configFile) {
@@ -158,6 +167,17 @@ func (c *Configuration) getConfiguration(configFile string) *Configuration {
 	// normalize checksums
 	for i := 0; i < len(c.Input.Content.Checksum); i++ {
 		c.Input.Content.Checksum[i] = strings.ToLower(c.Input.Content.Checksum[i])
+	}
+
+	// normalize YARA paths relative to the configuration file directory
+	if configBaseDir != "" {
+		for i := 0; i < len(c.Input.Content.Yara); i++ {
+			p := strings.TrimSpace(c.Input.Content.Yara[i])
+			if len(p) == 0 || IsValidUrl(p) || filepath.IsAbs(p) {
+				continue
+			}
+			c.Input.Content.Yara[i] = filepath.Clean(filepath.Join(configBaseDir, p))
+		}
 	}
 
 	return c

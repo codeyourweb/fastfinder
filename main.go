@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
@@ -21,7 +23,7 @@ import (
 	"github.com/hillu/go-yara/v4"
 )
 
-const FASTFINDER_VERSION = "3.0.0beta"
+const FASTFINDER_VERSION = "3.0.0"
 const YARA_VERSION = "4.5.5"
 const BUILDER_RC4_KEY = ">Õ°ªKb{¡§ÌB$lMÕ±9l.tòÑé¦Ø¿"
 
@@ -281,14 +283,29 @@ func FastFinderInit(config Configuration, pConfigPath string, pSfxPath string) {
 	LogMessage(LOG_INFO, "(INIT)", "Current directory:", GetCurrentDirectory())
 	LogMessage(LOG_INFO, "(INIT)", "Max file size scan:", fmt.Sprintf("%dMB", config.AdvancedParameters.MaxScanFilesize))
 	LogMessage(LOG_INFO, "(INIT)", "Config file:", pConfigPath)
-	LogMessage(LOG_INFO, "(INIT)", "Fastfinder executable SHA256 checksum:", FileSHA256Sum(os.Args[0]))
+
+	// Resolve executable path (handles cases where binary is in PATH)
+	execPath := os.Args[0]
+	if !filepath.IsAbs(execPath) {
+		if absPath, err := exec.LookPath(execPath); err == nil {
+			execPath = absPath
+		} else if absPath, err := filepath.Abs(execPath); err == nil {
+			execPath = absPath
+		}
+	}
+	LogMessage(LOG_INFO, "(INIT)", "Fastfinder executable SHA256 checksum:", FileSHA256Sum(execPath))
 	LogMessage(LOG_INFO, "(INIT)", "Configuration file SHA256 checksum:", FileSHA256Sum(pConfigPath))
 
 	if len(pSfxPath) == 0 {
-		// create mutex
-		if _, err = CreateMutex("fastfinder"); err != nil {
-			LogMessage(LOG_ERROR, "(ERROR)", "Only one instance or fastfinder can be launched:", err.Error())
-			ExitProgram(1, !UIactive)
+		disableMutex := os.Getenv("FASTFINDER_DISABLE_MUTEX") == "1"
+		if !disableMutex {
+			// create mutex
+			if _, err = CreateMutex("fastfinder"); err != nil {
+				LogMessage(LOG_ERROR, "(ERROR)", "Only one instance or fastfinder can be launched:", err.Error())
+				ExitProgram(1, !UIactive)
+			}
+		} else {
+			LogMessage(LOG_INFO, "(INIT)", "Mutex disabled via FASTFINDER_DISABLE_MUTEX=1 (container mode)")
 		}
 
 		// Retrieve current user permissions

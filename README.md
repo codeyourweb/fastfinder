@@ -54,6 +54,35 @@ FastFinder is a powerful, lightweight incident response tool designed for cybers
 - 🪟 **Windows**: [Compilation Guide](README.windows-compilation.md)
 - 🐧 **Linux**: [Compilation Guide](README.linux-compilation.md)
 
+### Docker Installation (No Dependencies Required!)
+
+The easiest way to build FastFinder without installing any dependencies:
+
+```bash
+# Build binaries for Linux and Windows
+cd docker
+make build-binaries
+
+# Binaries will be in ./bin/
+# - fastfinder-linux-amd64
+# - fastfinder-windows-amd64.exe
+```
+
+#### Docker Runtime Container
+
+Run FastFinder inside a privileged Docker container to scan volumes or mounted filesystems:
+
+```powershell
+# Build the runtime image (includes FastFinder + YARA + editors)
+.\docker-helper.ps1 build-runtime
+
+# Run scan with configuration directory
+.\docker-helper.ps1 run-runtime -ConfigPath "C:\path\to\config_folder" -ScanPath "C:\data\to\scan"
+
+# Interactive shell mode (no scan, just shell access)
+.\docker-helper.ps1 run-runtime -Interactive
+```
+
 ### Requirements
 
 - **Runtime**: No dependencies required for pre-compiled binaries
@@ -105,7 +134,7 @@ fastfinder [OPTIONS]
 ./fastfinder -b standalone_scanner.exe
 ```
 
-> 💡 **Tip**: FastFinder can run with standard user privileges, but administrative rights provide access to all system files. 
+> 💡 **Tip**: FastFinder can run with standard user privileges, but administrative rights provide access to all system files.
 
 ### Scan and export file match according to your needs
 configuration examples are available [there](./examples)
@@ -143,13 +172,13 @@ eventforwarding:
     retain_files: 5      # Keep 5 old files
   http: # forward app activity with HTTP POST json data
     enabled: false
-	  url: "https://your-forwarder-url.com/api/events"
-	  ssl_verify: false
-	  timeout_seconds: 10
-	  headers:
+    url: "https://your-forwarder-url.com/api/events"
+    ssl_verify: false
+    timeout_seconds: 10
+    headers:
       Authorization: "Bearer YOUR_API_KEY"
       MY-CUSTOM-HEADER: "My-Header-Value"
-	  retry_count: 3
+    retry_count: 3
   filters:
     event_types:
       - "error"
@@ -164,10 +193,34 @@ eventforwarding:
 * regular expressions are also available , just enclose paths with slashes (eg. /[0-9]{8}\\.exe/)
 * environment variables can also be used (eg. %TEMP%\\myfile.exe)
 
+### YARA Rules Path Resolution
+
+**Relative paths in YAML configuration are resolved relative to the configuration file location:**
+
+```yaml
+input:
+  content:
+    yara:
+      - "./example_rule_linux.yar"           # Looks in same folder as config.yaml
+      - "./subfolder/custom_rules.yar"       # Looks in subfolder relative to config
+      - "/absolute/path/to/rule.yar"         # Absolute paths work as-is
+      - "https://example.com/rules.yar"      # URLs are also supported
+```
+
+Example directory structure:
+```
+project/
+├── config.yaml
+├── example_rule_linux.yar          # ✅ Found by "./example_rule_linux.yar"
+└── rules/
+    └── custom.yar                  # ✅ Found by "./rules/custom.yar"
+```
+
 ### Important notes
 * input path are always case INSENSITIVE
 * content search on string (grep) are always case SENSITIVE
 * backslashes SHOULD NOT be escaped (except with regular expressions)
+* **YARA rules must exist** - missing rules will cause FastFinder to exit with an error
 For more informations, take a look at the [examples](./examples)
 
 ## 🤝 Contributing
