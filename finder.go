@@ -6,7 +6,8 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"os"
 	"runtime/debug"
 	"strings"
 	"time"
@@ -36,11 +37,11 @@ func FindInFilesContent(files *[]string, patterns []string, rules *yara.Rules, h
 	var matchingFiles []string
 
 	for _, path := range *files {
-		b, err := ioutil.ReadFile(path)
+		b, err := os.ReadFile(path)
 		if err != nil {
 			if triageMode {
 				time.Sleep(500 * time.Millisecond)
-				b, err = ioutil.ReadFile(path)
+				b, err = os.ReadFile(path)
 				if err != nil {
 					LogMessage(LOG_ERROR, "(ERROR)", "Unable to read file", path)
 					continue
@@ -107,7 +108,7 @@ func FindInFilesContent(files *[]string, patterns []string, rules *yara.Rules, h
 				}
 				defer fr.Close()
 
-				body, err := ioutil.ReadAll(fr)
+				body, err := io.ReadAll(fr)
 				if err != nil {
 					LogMessage(LOG_ERROR, "(ERROR)", "Unable to read file archive member:", path, subFile.Name)
 					continue

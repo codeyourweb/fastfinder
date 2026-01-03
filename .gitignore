@@ -4,3 +4,4 @@
 .vscode/
 .history/
 bin/
+*.exe

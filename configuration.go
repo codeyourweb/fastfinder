@@ -3,8 +3,9 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -87,13 +88,13 @@ func (c *Configuration) getConfiguration(configFile string) *Configuration {
 		if err != nil {
 			LogFatal(fmt.Sprintf("Configuration file URL unreachable %v", err))
 		}
-		yamlContent, err = ioutil.ReadAll(response.Body)
+		yamlContent, err = io.ReadAll(response.Body)
 		if err != nil {
 			LogFatal(fmt.Sprintf("Configuration file URL content unreadable %v", err))
 		}
 		response.Body.Close()
 	} else {
-		yamlContent, err = ioutil.ReadFile(configFile)
+		yamlContent, err = os.ReadFile(configFile)
 		if err != nil {
 			LogFatal(fmt.Sprintf("Configuration file reading error %v ", err))
 		}

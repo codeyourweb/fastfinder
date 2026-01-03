@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime/debug"
@@ -209,7 +208,7 @@ func (sp *ScannerPipeline) scanFiles(
 
 		// Scan file content if criteria exist
 		if len(patterns) > 0 || len(hashList) > 0 || (rules != nil && len(rules.GetRules()) > 0) {
-			b, err := ioutil.ReadFile(filePath)
+			b, err := os.ReadFile(filePath)
 			if err != nil {
 				LogMessage(LOG_ERROR, "(ERROR)", "Unable to read file", filePath)
 				continue

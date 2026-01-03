@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -123,7 +123,7 @@ func LoadYaraRules(path []string, rc4key string) (compiler *yara.Compiler, err e
 				LogMessage(LOG_ERROR, "YARA file URL unreachable", dir, err)
 				continue
 			}
-			f, err = ioutil.ReadAll(response.Body)
+			f, err = io.ReadAll(response.Body)
 			if err != nil {
 				LogMessage(LOG_ERROR, "YARA file URL content unreadable", dir, err)
 				continue
