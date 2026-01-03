@@ -255,7 +255,7 @@ function Run-Runtime {
         $entrypointArgs = @("--entrypoint", "/bin/bash")
         $commandArgs = @()
     } else {
-        $commandArgs = @("-c", $configFileInContainer)
+        $commandArgs = @("-c", $configFileInContainer, "--root", "/scan")
         if ($Triage) {
             $commandArgs += "-t"
             Write-Info "Triage mode enabled - continuous monitoring active"

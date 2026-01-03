@@ -143,16 +143,24 @@ func EnumLogicalDrives() (drivesInfo []DriveInfo, excludedPaths []string) {
 
 	// Fallback for containers: if nothing was found, use a mounted scan root
 	if len(drivesInfo) == 0 {
+		LogMessage(LOG_VERBOSE, "[COMPAT]", "No block devices found - checking for container environment")
+		
 		root := os.Getenv("FASTFINDER_SCAN_ROOT")
 		if root == "" {
 			root = "/scan"
 		}
 
+		LogMessage(LOG_VERBOSE, "[COMPAT]", "Attempting to use fallback scan root:", root)
+		
 		if info, err := os.Stat(root); err == nil && info.IsDir() {
-			LogMessage(LOG_INFO, "[COMPAT]", "No block devices found; using fallback scan root", root)
+			LogMessage(LOG_INFO, "[COMPAT]", "Container detected: using fallback scan root", root)
 			drivesInfo = append(drivesInfo, DriveInfo{Name: root, Type: DRIVE_FIXED})
 		} else {
-			LogMessage(LOG_ERROR, "[COMPAT]", "Fallback scan root not accessible", root)
+			if err != nil {
+				LogMessage(LOG_ERROR, "[COMPAT]", "Fallback scan root not accessible (stat error):", root, "Error:", err.Error())
+			} else {
+				LogMessage(LOG_ERROR, "[COMPAT]", "Fallback scan root exists but is not a directory:", root)
+			}
 		}
 	}
 

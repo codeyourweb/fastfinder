@@ -93,7 +93,7 @@ func RunProgramWithParameters(pConfigPath string, pSfxPath string, pSilentMode b
 		go MainFastfinderRoutine(config, pConfigPath, false, pSfxPath, pTriage, pLogVerbosity, pRootPath)
 		MainWindow()
 	} else {
-		LogMessage(LOG_INFO, LineBreak+"================================================"+LineBreak+RenderFastfinderLogo()+"================================================"+LineBreak)
+		fmt.Print(LineBreak + "================================================" + LineBreak + RenderFastfinderLogo() + "================================================" + LineBreak)
 		MainFastfinderRoutine(config, pConfigPath, false, pSfxPath, pTriage, pLogVerbosity, pRootPath)
 	}
 
@@ -186,8 +186,17 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pNoAdvUI bo
 	for _, basePath := range baseDrives {
 		LogMessage(LOG_VERBOSE, "(INFO)", "Enumerating files in", basePath)
 
+		// Calculate excluded paths for this base path
+		var currentExcludedPaths []string
+		currentExcludedPaths = append(currentExcludedPaths, excludedPaths...)
+
 		if runtime.GOOS != "windows" {
-			excludedPaths = append(excludedPaths, basePath)
+			// Exclude other base drives that are subdirectories of the current base path
+			for _, otherPath := range baseDrives {
+				if otherPath != basePath && strings.HasPrefix(otherPath, basePath) {
+					currentExcludedPaths = append(currentExcludedPaths, otherPath)
+				}
+			}
 		}
 
 		// Prepare path regex patterns
@@ -205,7 +214,7 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pNoAdvUI bo
 
 		// Start enumeration in a separate goroutine
 		LogMessage(LOG_VERBOSE, "(INFO)", "Starting file enumeration in", basePath)
-		pipeline.StartEnumeration([]string{basePath}, excludedPaths)
+		pipeline.StartEnumeration([]string{basePath}, currentExcludedPaths)
 
 		// Start scanning based on configuration
 		if len(config.Input.Content.Grep) > 0 || len(config.Input.Content.Checksum) > 0 || len(config.Input.Content.Yara) > 0 {

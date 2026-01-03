@@ -71,10 +71,11 @@ sudo dnf install -y \
     gcc \
     pkgconf \
     git \
-    openssl-devel
+    openssl-devel \
+    zlib-devel
 ```
 
-> ⚠️ **Fedora-specific workaround**: After installing YARA, you may encounter library linking issues. See the [troubleshooting section](#fedora-library-workaround) below for the required additional steps.
+> ⚠️ **Fedora-specific workaround**: Depending on your Fedora version, after installing YARA, you may encounter library linking issues. See the [troubleshooting section](#fedora-library-workaround) below for the required additional steps.
 
 ### Arch Linux
 
@@ -99,7 +100,7 @@ sudo pacman -S \
 mkdir -p ~/build && cd ~/build
 
 # Download latest stable release
-YARA_VERSION="4.5.0"  # Check https://github.com/VirusTotal/yara/releases for latest
+YARA_VERSION="4.5.5"  # Check https://github.com/VirusTotal/yara/releases for latest
 wget https://github.com/VirusTotal/yara/archive/v${YARA_VERSION}.tar.gz
 tar -xzf v${YARA_VERSION}.tar.gz
 cd yara-${YARA_VERSION}
@@ -134,6 +135,7 @@ sudo ldconfig
 yara --version
 
 # Verify library linking
+export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/lib/pkgconfig
 pkg-config --cflags --libs yara
 
 # Test with simple rule
@@ -150,7 +152,6 @@ CGO requires specific flags to link with the YARA library:
 # Add to your ~/.bashrc or ~/.profile
 export CGO_CFLAGS="-I/usr/local/include"
 export CGO_LDFLAGS="-L/usr/local/lib -lyara"
-export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH"
 
 # Reload environment
 source ~/.bashrc
