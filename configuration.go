@@ -3,8 +3,10 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -22,6 +24,7 @@ type Configuration struct {
 	Options            Options            `yaml:"options"`
 	Output             Output             `yaml:"output"`
 	AdvancedParameters AdvancedParameters `yaml:"advancedparameters"`
+	EventForwarding    ForwardingConfig   `yaml:"eventforwarding"`
 }
 
 type Input struct {
@@ -70,6 +73,14 @@ func (c *Configuration) getConfiguration(configFile string) *Configuration {
 	var yamlContent []byte
 	var err error
 	configFile = strings.TrimSpace(configFile)
+	configBaseDir := ""
+
+	if !IsValidUrl(configFile) {
+		if absPath, err := filepath.Abs(configFile); err == nil {
+			configFile = absPath
+			configBaseDir = filepath.Dir(absPath)
+		}
+	}
 
 	// configuration reading
 	if IsValidUrl(configFile) {
@@ -77,13 +88,13 @@ func (c *Configuration) getConfiguration(configFile string) *Configuration {
 		if err != nil {
 			LogFatal(fmt.Sprintf("Configuration file URL unreachable %v", err))
 		}
-		yamlContent, err = ioutil.ReadAll(response.Body)
+		yamlContent, err = io.ReadAll(response.Body)
 		if err != nil {
 			LogFatal(fmt.Sprintf("Configuration file URL content unreadable %v", err))
 		}
 		response.Body.Close()
 	} else {
-		yamlContent, err = ioutil.ReadFile(configFile)
+		yamlContent, err = os.ReadFile(configFile)
 		if err != nil {
 			LogFatal(fmt.Sprintf("Configuration file reading error %v ", err))
 		}
@@ -157,6 +168,17 @@ func (c *Configuration) getConfiguration(configFile string) *Configuration {
 	// normalize checksums
 	for i := 0; i < len(c.Input.Content.Checksum); i++ {
 		c.Input.Content.Checksum[i] = strings.ToLower(c.Input.Content.Checksum[i])
+	}
+
+	// normalize YARA paths relative to the configuration file directory
+	if configBaseDir != "" {
+		for i := 0; i < len(c.Input.Content.Yara); i++ {
+			p := strings.TrimSpace(c.Input.Content.Yara[i])
+			if len(p) == 0 || IsValidUrl(p) || filepath.IsAbs(p) {
+				continue
+			}
+			c.Input.Content.Yara[i] = filepath.Clean(filepath.Join(configBaseDir, p))
+		}
 	}
 
 	return c

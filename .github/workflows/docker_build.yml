@@ -1,0 +1,149 @@
+name: Docker Build Test
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'docker/**'
+      - '*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/docker_build.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'docker/**'
+      - '*.go'
+  workflow_dispatch:
+
+jobs:
+  # Test builder Dockerfile (cross-compilation)
+  test-builder:
+    name: Test Multi-Platform Builder
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Build Linux binary
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile.builder
+          target: linux-builder
+          push: false
+          tags: fastfinder-linux-builder:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      
+      - name: Build Windows binary
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile.builder
+          target: windows-builder
+          push: false
+          tags: fastfinder-windows-builder:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      
+      - name: Extract binaries
+        run: |
+          mkdir -p bin
+          docker build --target binaries --output type=local,dest=./bin -f docker/Dockerfile.builder .
+          ls -lh bin/
+      
+      - name: Verify binaries exist
+        run: |
+          if [ ! -f "bin/fastfinder-linux-amd64" ]; then
+            echo "Linux binary not found!"
+            exit 1
+          fi
+          if [ ! -f "bin/fastfinder-windows-amd64.exe" ]; then
+            echo "Windows binary not found!"
+            exit 1
+          fi
+          echo "✓ Both binaries built successfully"
+      
+      - name: Test Linux binary
+        run: |
+          chmod +x bin/fastfinder-linux-amd64
+          bin/fastfinder-linux-amd64 --version || echo "Version check not available"
+      
+      - name: Upload binaries as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: fastfinder-binaries
+          path: |
+            bin/fastfinder-linux-amd64
+            bin/fastfinder-windows-amd64.exe
+          retention-days: 7
+
+  # Test runtime Dockerfile
+  test-runtime:
+    name: Test Runtime Container
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Build runtime image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile.runtime
+          push: false
+          tags: fastfinder:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      
+      - name: Test runtime container
+        run: |
+          # Create test directories
+          mkdir -p test-scan test-output
+          echo "test file" > test-scan/test.txt
+          
+          # Run container
+          docker run --rm \
+            -v $(pwd)/test-scan:/scan:ro \
+            -v $(pwd)/examples:/rules:ro \
+            -v $(pwd)/test-output:/output \
+            fastfinder:test \
+            --help
+          
+          echo "✓ Runtime container works"
+
+  # Test docker-compose
+  test-compose:
+    name: Test Docker Compose
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Validate docker-compose.yml
+        run: |
+          cd docker
+          docker-compose config
+          echo "✓ docker-compose.yml is valid"
+      
+      - name: Test builder profile
+        run: |
+          cd docker
+          docker-compose --profile build config
+          echo "✓ Builder profile is valid"
+      
+      - name: Test runtime profile
+        run: |
+          cd docker
+          docker-compose --profile runtime config
+          echo "✓ Runtime profile is valid"

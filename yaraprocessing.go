@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -30,6 +30,11 @@ func CompileYaraRules(yaraFiles []string, yaraRC4Key string) (rules *yara.Rules)
 	rules, err = CompileRules(compiler)
 	if err != nil {
 		LogMessage(LOG_ERROR, err)
+		ExitProgram(1, !UIactive)
+	}
+
+	if len(rules.GetRules()) == 0 {
+		LogMessage(LOG_ERROR, "(ERROR)", "No YARA rules compiled - check configuration paths")
 		ExitProgram(1, !UIactive)
 	}
 
@@ -102,7 +107,13 @@ func LoadYaraRules(path []string, rc4key string) (compiler *yara.Compiler, err e
 		return nil, fmt.Errorf("failed to initialize YARA compiler: %s", err.Error())
 	}
 
-	for _, dir := range EnumerateYaraInFolders(path) {
+	allRulePaths := EnumerateYaraInFolders(path)
+	if len(allRulePaths) == 0 {
+		return nil, fmt.Errorf("no YARA rule files found from configuration paths")
+	}
+
+	loadedRules := 0
+	for _, dir := range allRulePaths {
 		var f []byte
 		var err error
 
@@ -112,7 +123,7 @@ func LoadYaraRules(path []string, rc4key string) (compiler *yara.Compiler, err e
 				LogMessage(LOG_ERROR, "YARA file URL unreachable", dir, err)
 				continue
 			}
-			f, err = ioutil.ReadAll(response.Body)
+			f, err = io.ReadAll(response.Body)
 			if err != nil {
 				LogMessage(LOG_ERROR, "YARA file URL content unreadable", dir, err)
 				continue
@@ -135,6 +146,11 @@ func LoadYaraRules(path []string, rc4key string) (compiler *yara.Compiler, err e
 			LogMessage(LOG_ERROR, "(ERROR)", "Could not load rule file ", dir, err)
 			continue
 		}
+		loadedRules++
+	}
+
+	if loadedRules == 0 {
+		return nil, fmt.Errorf("failed to load any YARA rule from provided paths")
 	}
 
 	return compiler, nil
@@ -244,6 +260,21 @@ func FileAnalyzeYaraMatch(path string, rules *yara.Rules, maxFileSizeScan int, c
 		LogMessage(LOG_ALERT, " | path:", path)
 		LogMessage(LOG_ALERT, " | rule namespace:", result[i].Namespace)
 		LogMessage(LOG_ALERT, " | rule name:", result[i].Rule)
+
+		// Forward YARA match event
+		metadata := map[string]string{
+			"rule_namespace": result[i].Namespace,
+			"rule_name":      result[i].Rule,
+			"file_path":      path,
+		}
+
+		// Get file size if possible
+		if fileInfo, err := os.Stat(path); err == nil {
+			metadata["file_size"] = fmt.Sprintf("%d", fileInfo.Size())
+			ForwardAlertEvent(result[i].Rule, path, fileInfo.Size(), "", metadata)
+		} else {
+			ForwardAlertEvent(result[i].Rule, path, 0, "", metadata)
+		}
 	}
 
 	return len(result) > 0

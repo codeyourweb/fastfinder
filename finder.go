@@ -6,7 +6,8 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"os"
 	"runtime/debug"
 	"strings"
 	"time"
@@ -19,11 +20,9 @@ import (
 
 // PathsFinder try to match regular expressions in file paths slice
 func PathsFinder(files *[]string, patterns []*regexp2.Regexp) *[]string {
-	InitProgressbar(int64(len(*files)))
 	var matchingFiles []string
 	for _, expression := range patterns {
 		for _, f := range *files {
-			ProgressBarStep()
 			if match, _ := expression.MatchString(f); match {
 				matchingFiles = append(matchingFiles, f)
 			}
@@ -37,14 +36,12 @@ func PathsFinder(files *[]string, patterns []*regexp2.Regexp) *[]string {
 func FindInFilesContent(files *[]string, patterns []string, rules *yara.Rules, hashList []string, triageMode bool, maxScanFilesize int, cleanMemoryIfFileGreaterThanSize int) *[]string {
 	var matchingFiles []string
 
-	InitProgressbar(int64(len(*files)))
 	for _, path := range *files {
-		ProgressBarStep()
-		b, err := ioutil.ReadFile(path)
+		b, err := os.ReadFile(path)
 		if err != nil {
 			if triageMode {
 				time.Sleep(500 * time.Millisecond)
-				b, err = ioutil.ReadFile(path)
+				b, err = os.ReadFile(path)
 				if err != nil {
 					LogMessage(LOG_ERROR, "(ERROR)", "Unable to read file", path)
 					continue
@@ -58,7 +55,7 @@ func FindInFilesContent(files *[]string, patterns []string, rules *yara.Rules, h
 
 		// cancel analysis if file size is greater than maxScanFilesize
 		if len(b) > 1024*1024*maxScanFilesize {
-			LogMessage(LOG_ERROR, "(ERROR)", fmt.Sprintf("File %s size is greater than %dMb, skipping", path, maxScanFilesize))
+			LogMessage(LOG_WARNING, "(WARNING)", fmt.Sprintf("File %s size is greater than %dMb, skipping", path, maxScanFilesize))
 			continue
 		}
 
@@ -90,10 +87,8 @@ func FindInFilesContent(files *[]string, patterns []string, rules *yara.Rules, h
 
 			// output yara match results
 			for i := 0; i < len(yaraResult); i++ {
-				LogMessage(LOG_ALERT, "(ALERT)", "YARA match:")
-				LogMessage(LOG_ALERT, " | path:", path)
-				LogMessage(LOG_ALERT, " | rule namespace:", yaraResult[i].Namespace)
-				LogMessage(LOG_ALERT, " | rule name:", yaraResult[i].Rule)
+				message := fmt.Sprintf("YARA match | path: %s | rule namespace: %s | rule name: %s", path, yaraResult[i].Namespace, yaraResult[i].Rule)
+				LogMessage(LOG_ALERT, "(ALERT)", message)
 			}
 		}
 
@@ -113,7 +108,7 @@ func FindInFilesContent(files *[]string, patterns []string, rules *yara.Rules, h
 				}
 				defer fr.Close()
 
-				body, err := ioutil.ReadAll(fr)
+				body, err := io.ReadAll(fr)
 				if err != nil {
 					LogMessage(LOG_ERROR, "(ERROR)", "Unable to read file archive member:", path, subFile.Name)
 					continue
@@ -172,6 +167,7 @@ func CheckFileChecksumAndContent(path string, content []byte, hashList []string,
 
 // checkForChecksum calculate content checksum and check if it is in hashlist
 func checkForChecksum(path string, content []byte, hashList []string) (matchingFiles []string) {
+	LogMessage(LOG_VERBOSE, "(SCAN)", "Calculating checksums for", path)
 	var hashs []string
 	hashs = append(hashs, fmt.Sprintf("%x", md5.Sum(content)))
 	hashs = append(hashs, fmt.Sprintf("%x", sha1.Sum(content)))
@@ -179,6 +175,7 @@ func checkForChecksum(path string, content []byte, hashList []string) (matchingF
 
 	for _, c := range hashs {
 		if Contains(hashList, c) && !Contains(matchingFiles, path) {
+			LogMessage(LOG_ALERT, "(ALERT)", "Checksum match:", c, "in", path)
 			matchingFiles = append(matchingFiles, path)
 		}
 	}
@@ -188,8 +185,10 @@ func checkForChecksum(path string, content []byte, hashList []string) (matchingF
 
 // checkForStringPattern check if file content matches any specified pattern
 func checkForStringPattern(path string, content []byte, patterns []string) (matchingFiles []string) {
+	LogMessage(LOG_VERBOSE, "(SCAN)", "Checking grep patterns in", path)
 	for _, expression := range patterns {
 		if strings.Contains(string(content), expression) {
+			LogMessage(LOG_ALERT, "(ALERT)", "Grep match:", expression, "in", path)
 			matchingFiles = append(matchingFiles, path)
 		}
 	}

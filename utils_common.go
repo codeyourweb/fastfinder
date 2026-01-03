@@ -11,8 +11,11 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
+
+	"github.com/dlclark/regexp2"
 )
 
 type Env struct {
@@ -41,7 +44,7 @@ func RenderFastfinderLogo() string {
 	txtLogo += " |__   /\\  /__`  |  |__  | |\\ | |  \\ |__  |__) " + LineBreak
 	txtLogo += " |    /~~\\ .__/  |  |    | | \\| |__/ |___ |  \\ " + LineBreak
 	txtLogo += "                                                  " + LineBreak
-	txtLogo += "  2021-2022 | Jean-Pierre GARNIER | @codeyourweb  " + LineBreak
+	txtLogo += "  2021-2026 | Jean-Pierre GARNIER | @codeyourweb  " + LineBreak
 	txtLogo += "  https://github.com/codeyourweb/fastfinder       " + LineBreak
 	return txtLogo
 }
@@ -186,6 +189,95 @@ func ListDirectoryRecursively(path string, excludedPaths []string) *[]string {
 	}
 
 	return &directories
+}
+
+// ScanSpecificPaths recursively scans only the specified paths and their subdirectories
+// It converts path patterns to actual directories and enumerates files within them
+func ScanSpecificPaths(basePath string, pathPatterns []string, excludedPaths []string) *[]string {
+	var allFiles []string
+	visitedDirs := make(map[string]bool)
+
+	// For each path pattern, find matching directories and scan them
+	for _, pattern := range pathPatterns {
+		// Check if pattern contains wildcards or regex
+		isRegex := strings.HasPrefix(pattern, "/") && strings.HasSuffix(pattern, "/")
+
+		// Convert Windows-style paths to proper format if needed
+		if runtime.GOOS == "windows" {
+			pattern = strings.ToLower(pattern)
+		}
+
+		// Walk the base path and find directories matching the pattern
+		err := filepath.Walk(basePath, func(currentPath string, f os.FileInfo, err error) error {
+			if err != nil {
+				return filepath.SkipDir
+			}
+
+			// Check if this directory matches our pattern
+			relativePath := strings.TrimPrefix(currentPath, basePath)
+			if runtime.GOOS == "windows" {
+				relativePath = strings.ToLower(relativePath)
+			}
+
+			matchesPattern := false
+
+			if isRegex {
+				// Handle regex patterns
+				regexPattern := strings.TrimPrefix(strings.TrimSuffix(pattern, "/"), "/")
+				re := regexp2.MustCompile(regexPattern, regexp2.IgnoreCase)
+				if match, _ := re.MatchString(currentPath); match {
+					matchesPattern = true
+				}
+			} else {
+				// Handle wildcard and simple string patterns
+				if strings.Contains(pattern, "*") || strings.Contains(pattern, "?") {
+					matched, _ := filepath.Match(pattern, relativePath)
+					if matched {
+						matchesPattern = true
+					}
+				} else {
+					// Simple substring match
+					if strings.Contains(relativePath, strings.ReplaceAll(pattern, "\\", string(filepath.Separator))) {
+						matchesPattern = true
+					}
+				}
+			}
+
+			// If this directory matches, scan it recursively
+			if matchesPattern && f.IsDir() {
+				dirKey := strings.ToLower(currentPath)
+				if !visitedDirs[dirKey] {
+					visitedDirs[dirKey] = true
+
+					// Check if directory is in excluded paths
+					isExcluded := false
+					for _, excludedPath := range excludedPaths {
+						if len(excludedPath) > 1 && strings.HasPrefix(currentPath, excludedPath) {
+							isExcluded = true
+							break
+						}
+					}
+
+					if !isExcluded {
+						// Recursively list all files in this directory
+						dirFiles := ListFilesRecursively(currentPath, excludedPaths)
+						allFiles = append(allFiles, *dirFiles...)
+					}
+
+					// Don't recurse deeper into matched directories
+					return filepath.SkipDir
+				}
+			}
+
+			return nil
+		})
+
+		if err != nil && err != filepath.SkipDir {
+			LogMessage(LOG_ERROR, "(ERROR)", "Error scanning specific paths:", err)
+		}
+	}
+
+	return &allFiles
 }
 
 // FileCopy copy the specified file from src to dst path, and eventually encode its content to base64. Return copied file path

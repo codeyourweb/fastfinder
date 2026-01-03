@@ -1,0 +1,78 @@
+# FastFinder Configuration - Docker Triage Example
+# Optimized for containerized triage operations
+# Mount your target directory to /scan when running the container
+
+input:
+  # Search for suspicious files in mounted /scan volume
+  path:
+    - "/scan/**/*.exe"
+    - "/scan/**/*.dll"
+    - "/scan/**/*.so"
+    - "/scan/**/*.sh"
+    - "/scan/**/*.ps1"
+    - "/scan/**/*.bat"
+    - "/scan/**/*.cmd"
+    - "/scan/**/*.vbs"
+    - "/scan/**/*.js"
+    
+  content:
+    # Search for known malicious strings
+    grep:
+      - "eval("
+      - "base64_decode"
+      - "system("
+      - "exec("
+      - "shell_exec"
+      
+    # Use YARA rules from mounted volume
+    yara:
+      - "/rules/*.yar"
+      - "/rules/**/*.yar"
+    
+    # Search for known malicious hashes
+    checksum: []
+
+options:
+  contentMatchDependsOnPathMatch: false
+  findInHardDrives: false
+  findInRemovableDrives: false
+  findInNetworkDrives: false
+  findInCDRomDrives: false
+
+output:
+  copyMatchingFiles: true
+  base64Files: true
+  filesCopyPath: "/output/matched_files"
+
+advancedparameters:
+  yaraRC4Key: ""
+  maxScanFilesize: 500
+  cleanMemoryIfFileGreaterThanSize: 256
+
+eventforwarding:
+  enabled: true
+  buffer_size: 100
+  flush_time_seconds: 30
+  
+  file:
+    enabled: true
+    directory_path: "/logs"
+    rotate_minutes: 60
+    max_file_size_mb: 100
+    retain_files: 10
+    
+  http:
+    enabled: false
+    url: "https://your-siem.example.com/api/events"
+    ssl_verify: true
+    timeout_seconds: 30
+    headers:
+      Authorization: "Bearer YOUR_TOKEN_HERE"
+      Content-Type: "application/json"
+    retry_count: 3
+    
+  filters:
+    event_types:
+      - "alert"
+      - "error"
+      - "warning"

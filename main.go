@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
@@ -21,8 +23,8 @@ import (
 	"github.com/hillu/go-yara/v4"
 )
 
-const FASTFINDER_VERSION = "2.0.0"
-const YARA_VERSION = "4.1.3"
+const FASTFINDER_VERSION = "3.0.0"
+const YARA_VERSION = "4.5.5"
 const BUILDER_RC4_KEY = ">Õ°ªKb{¡§ÌB$lMÕ±9l.tòÑé¦Ø¿"
 
 func main() {
@@ -30,11 +32,10 @@ func main() {
 	parser := argparse.NewParser("fastfinder", "Fastfinder v"+FASTFINDER_VERSION+" (with YARA "+YARA_VERSION+")"+LineBreak+"\t\t\tIncident Response - Fast suspicious file finder")
 	pConfigPath := parser.String("c", "configuration", &argparse.Options{Required: false, Default: "", Help: "Fastfind configuration file"})
 	pSfxPath := parser.String("b", "build", &argparse.Options{Required: false, Help: "Output a standalone package with configuration and rules in a single binary"})
-	pOutLogPath := parser.String("o", "output", &argparse.Options{Required: false, Help: "Save fastfinder logs in the specified file"})
-	pHideWindow := parser.Flag("n", "no-window", &argparse.Options{Required: false, Help: "Hide fastfinder window"})
-	pDisableAdvUI := parser.Flag("u", "no-userinterface", &argparse.Options{Required: false, Help: "Hide advanced user interface"})
-	pLogVerbosity := parser.Int("v", "verbosity", &argparse.Options{Required: false, Default: 3, Help: "File log verbosity \n\t\t\t\t | 4: Only alert\n\t\t\t\t | 3: Alert and errors\n\t\t\t\t | 2: Alerts,errors and I/O operations\n\t\t\t\t | 1: Full verbosity)\n\t\t\t\t"})
+	pSilentMode := parser.Flag("s", "silent", &argparse.Options{Required: false, Help: "Silent mode - run without any visible window or console"})
+	pLogVerbosity := parser.Int("v", "verbosity", &argparse.Options{Required: false, Default: 3, Help: "File log verbosity \n\t\t\t\t | 1: Only alerts\n\t\t\t\t | 2: Alerts and warnings\n\t\t\t\t | 3: Alerts,warnings and errors\n\t\t\t\t | 4: Alerts,warnings,errors and I/O operations\n\t\t\t\t | 5: Full verbosity)\n\t\t\t\t"})
 	pTriage := parser.Flag("t", "triage", &argparse.Options{Required: false, Default: false, Help: "Triage mode (infinite run - scan every new file in the input path directories)"})
+	pRootPath := parser.String("r", "root", &argparse.Options{Required: false, Default: "", Help: "Scan root path (override drive enumeration to scan specific directory)"})
 
 	// handle argument parsing error
 	err := parser.Parse(os.Args)
@@ -42,34 +43,38 @@ func main() {
 		log.Fatal(parser.Usage(err))
 	}
 
-	RunProgramWithParameters(*pConfigPath, *pSfxPath, *pOutLogPath, *pHideWindow, *pDisableAdvUI, *pLogVerbosity, *pTriage)
+	// Determine if any parameter (other than program name) was provided
+	hasParameters := len(os.Args) > 1
+
+	RunProgramWithParameters(*pConfigPath, *pSfxPath, *pSilentMode, *pLogVerbosity, *pTriage, *pRootPath, hasParameters)
 }
 
 // RunProgramWithParameters used specified argv and run fastfinder
-func RunProgramWithParameters(pConfigPath string, pSfxPath string, pOutLogPath string, pHideWindow bool, pDisableAdvUI bool, pLogVerbosity int, pTriage bool) {
-	// enable advanced UI
-	if pTriage || pDisableAdvUI || pHideWindow || len(pSfxPath) > 0 {
+func RunProgramWithParameters(pConfigPath string, pSfxPath string, pSilentMode bool, pLogVerbosity int, pTriage bool, pRootPath string, hasParameters bool) {
+	// Silent mode: no output at all
+	if pSilentMode {
+		UIactive = false
+		loggingVerbosity = 0 // Suppress all logging
+	}
+
+	// Determine mode:
+	// - No parameters at all: tview UI mode (default)
+	// - Has parameters: Console mode (no UI)
+	// - Has SFX: Build mode (console, no UI)
+
+	if pSilentMode || len(pSfxPath) > 0 || hasParameters {
+		// Silent mode, SFX build mode, or has parameters - no UI
 		UIactive = false
 	} else {
+		// Default: Use tview UI only when no parameters provided
 		InitUI()
 	}
 
-	// display open file dialog when config file empty
-	if len(pConfigPath) == 0 {
-		InitUI()
+	// display open file dialog when config file empty and UI is active
+	if len(pConfigPath) == 0 && UIactive {
 		OpenFileDialog()
 		pConfigPath = UIselectedConfigPath
 	}
-
-	// check for log path validity
-	if len(pOutLogPath) > 0 {
-		if strings.Contains(pOutLogPath, " ") {
-			LogFatal("Log file path cannot contain spaces")
-		}
-	}
-
-	// init progressbar object
-	EnableProgressbar(pDisableAdvUI)
 
 	// configuration parsing
 	var config Configuration
@@ -78,35 +83,31 @@ func RunProgramWithParameters(pConfigPath string, pSfxPath string, pOutLogPath s
 		config.Output.FilesCopyPath = "./"
 	}
 
-	// window hidden
-	if pHideWindow && len(pSfxPath) == 0 {
-		HideConsoleWindow()
-	}
-
-	// output log to file
-	if len(pOutLogPath) > 0 && len(pSfxPath) == 0 {
-		loggingPath = pOutLogPath
-	}
-
 	// file logging verbosity
-	if pLogVerbosity >= 1 && pLogVerbosity <= 4 {
+	if pLogVerbosity >= 1 && pLogVerbosity <= 5 {
 		loggingVerbosity = pLogVerbosity
 	}
 
 	// run app
 	if UIactive {
-		go MainFastfinderRoutine(config, pConfigPath, pDisableAdvUI, pHideWindow, pSfxPath, pTriage, pOutLogPath, pLogVerbosity)
+		go MainFastfinderRoutine(config, pConfigPath, false, pSfxPath, pTriage, pLogVerbosity, pRootPath)
 		MainWindow()
 	} else {
-		LogMessage(LOG_INFO, LineBreak+"================================================"+LineBreak+RenderFastfinderLogo()+"================================================"+LineBreak)
-		MainFastfinderRoutine(config, pConfigPath, pDisableAdvUI, pHideWindow, pSfxPath, pTriage, pOutLogPath, pLogVerbosity)
+		fmt.Print(LineBreak + "================================================" + LineBreak + RenderFastfinderLogo() + "================================================" + LineBreak)
+		MainFastfinderRoutine(config, pConfigPath, false, pSfxPath, pTriage, pLogVerbosity, pRootPath)
 	}
 
 }
 
 // MainFastfinderRoutine is used in every scan routine and based on config file directives
-func MainFastfinderRoutine(config Configuration, pConfigPath string, pNoAdvUI bool, pHideWindow bool, pSfxPath string, pTriage bool, pOutLogPath string, pLoglevel int) {
+func MainFastfinderRoutine(config Configuration, pConfigPath string, pNoAdvUI bool, pSfxPath string, pTriage bool, pLoglevel int, pRootPath string) {
 	var rules *yara.Rules
+
+	// Tracking variables for event forwarding
+	scanStartTime := time.Now()
+	var totalFilesScanned int
+	var totalMatchesFound int
+	var totalErrorsEncountered int
 
 	// check for input configuration
 	if len(config.Input.Path) == 0 && len(config.Input.Content.Grep) == 0 && len(config.Input.Content.Checksum) == 0 && len(config.Input.Content.Yara) == 0 {
@@ -116,13 +117,28 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pNoAdvUI bo
 
 	// sfx building option
 	if len(pSfxPath) > 0 {
-		BuildSFX(config, pSfxPath, pLoglevel, pOutLogPath, pNoAdvUI, pHideWindow)
+		BuildSFX(config, pSfxPath, pLoglevel, pNoAdvUI)
 		LogMessage(LOG_INFO, "(INFO)", "Fastfinder package generated successfully at", pSfxPath)
 		ExitProgram(0, !UIactive)
 	}
 
 	// fastfinder init
-	FastFinderInit(config, pConfigPath, pSfxPath, pHideWindow)
+	FastFinderInit(config, pConfigPath, pSfxPath)
+
+	// Initialize event forwarding if configured
+	if config.EventForwarding.Enabled {
+		err := InitializeEventForwarding(&config.EventForwarding)
+		if err != nil {
+			LogMessage(LOG_ERROR, "Failed to initialize event forwarding:", err)
+		} else {
+			LogMessage(LOG_INFO, "Event forwarding initialized successfully")
+			// Forward scan start event
+			ForwardEvent("scan_start", "info", "FastFinder scan started", map[string]string{
+				"config_path": pConfigPath,
+				"version":     FASTFINDER_VERSION,
+			})
+		}
+	}
 
 	// if yara rules mentionned - compile them
 	if len(config.Input.Content.Yara) > 0 {
@@ -130,7 +146,16 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pNoAdvUI bo
 	}
 
 	// drives enumeration
-	baseDrives, excludedPaths := DriveEnumeration(config)
+	var baseDrives []string
+	var excludedPaths []string
+
+	if len(pRootPath) > 0 {
+		LogMessage(LOG_INFO, "(INIT)", "Using custom scan root:", pRootPath)
+		baseDrives = []string{pRootPath}
+		excludedPaths = []string{}
+	} else {
+		baseDrives, excludedPaths = DriveEnumeration(config)
+	}
 
 	// triage mode start
 	if pTriage {
@@ -147,11 +172,9 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pNoAdvUI bo
 			time.Sleep(3 * time.Second)
 		}
 
-		EnableProgressbar(false)
-
 		if !pNoAdvUI {
 			UIactive = false
-			LogMessage(LOG_INFO, "(INFO)", "Advanced UI and progressbar disabled for performance enhancements under triage")
+			LogMessage(LOG_INFO, "(INFO)", "Advanced UI disabled for performance enhancements under triage")
 		}
 
 		LogMessage(LOG_INFO, "(INFO)", "TRIAGE MODE - Use Ctrl+C to stop fastfinder")
@@ -162,78 +185,87 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pNoAdvUI bo
 	// start main routine
 	for _, basePath := range baseDrives {
 		LogMessage(LOG_VERBOSE, "(INFO)", "Enumerating files in", basePath)
-		var matchContent []string
-		var matchPathPattern []string
 
-		// files listing
-		filesEnumeration := ListFilesRecursively(basePath, excludedPaths)
+		// Calculate excluded paths for this base path
+		var currentExcludedPaths []string
+		currentExcludedPaths = append(currentExcludedPaths, excludedPaths...)
+
 		if runtime.GOOS != "windows" {
-			excludedPaths = append(excludedPaths, basePath)
+			// Exclude other base drives that are subdirectories of the current base path
+			for _, otherPath := range baseDrives {
+				if otherPath != basePath && strings.HasPrefix(otherPath, basePath) {
+					currentExcludedPaths = append(currentExcludedPaths, otherPath)
+				}
+			}
 		}
 
-		// check for files matching path patterns
+		// Prepare path regex patterns
+		var pathRegexPatterns []*regexp2.Regexp
 		if len(config.Input.Path) > 0 {
 			LogMessage(LOG_VERBOSE, "(INFO)", "Checking for paths matchs in", basePath)
-			var pathRegexPatterns []*regexp2.Regexp
 			for _, pattern := range config.Input.Path {
 				re := regexp2.MustCompile(pattern, regexp2.IgnoreCase)
 				pathRegexPatterns = append(pathRegexPatterns, re)
 			}
-			matchPathPattern = *PathsFinder(filesEnumeration, pathRegexPatterns)
-			if !config.Options.ContentMatchDependsOnPathMatch {
-				for i := 0; i < len(matchPathPattern); i++ {
-					LogMessage(LOG_ALERT, "(ALERT)", "File path match on:", matchPathPattern[i])
-				}
-			}
 		}
 
-		// check for file matching content, checksum and yara rules
+		// Create scanner pipeline with buffer for concurrent operations
+		pipeline := NewScannerPipeline(1000)
+
+		// Start enumeration in a separate goroutine
+		LogMessage(LOG_VERBOSE, "(INFO)", "Starting file enumeration in", basePath)
+		pipeline.StartEnumeration([]string{basePath}, currentExcludedPaths)
+
+		// Start scanning based on configuration
 		if len(config.Input.Content.Grep) > 0 || len(config.Input.Content.Checksum) > 0 || len(config.Input.Content.Yara) > 0 {
-			LogMessage(LOG_VERBOSE, "(INFO)", "Checking for content, checksum and YARA rules matchs in", basePath)
-
-			if config.Options.ContentMatchDependsOnPathMatch && len(config.Input.Path) > 0 {
-				if len(matchPathPattern) == 0 {
-					LogMessage(LOG_VERBOSE, "(INFO)", "Neither path nor pattern match. no file to scan with YARA.", basePath)
-				} else {
-					matchContent = *FindInFilesContent(&matchPathPattern, config.Input.Content.Grep, rules, config.Input.Content.Checksum, false, config.AdvancedParameters.MaxScanFilesize, config.AdvancedParameters.CleanMemoryIfFileGreaterThanSize)
-				}
-			} else {
-				matchContent = *FindInFilesContent(filesEnumeration, config.Input.Content.Grep, rules, config.Input.Content.Checksum, false, config.AdvancedParameters.MaxScanFilesize, config.AdvancedParameters.CleanMemoryIfFileGreaterThanSize)
-			}
+			LogMessage(LOG_VERBOSE, "(INFO)", "Starting content scanning in", basePath)
+			pipeline.StartScanning(
+				config.Input.Content.Grep,
+				rules,
+				config.Input.Content.Checksum,
+				config.AdvancedParameters.MaxScanFilesize,
+				config.AdvancedParameters.CleanMemoryIfFileGreaterThanSize,
+				pathRegexPatterns,
+				config.Options.ContentMatchDependsOnPathMatch)
+		} else if len(pathRegexPatterns) > 0 {
+			// Only path scanning, no content scanning
+			LogMessage(LOG_VERBOSE, "(INFO)", "Starting path pattern matching in", basePath)
+			pipeline.StartScanningPathOnly(pathRegexPatterns)
 		}
+
+		// Collect matches as they are found
+		var matchingFiles []string
+		matchesDone := make(chan bool, 1)
+		go func() {
+			for match := range pipeline.GetMatches() {
+				if !Contains(matchingFiles, match) {
+					matchingFiles = append(matchingFiles, match)
+				}
+			}
+			matchesDone <- true
+		}()
+
+		// Wait for enumeration and scanning to complete
+		pipeline.WaitEnumeration()
+		pipeline.WaitScanning()
+		pipeline.WaitAll()
+
+		// Wait for matches collection to complete
+		<-matchesDone
 
 		// listing and copy matching files
 		LogMessage(LOG_INFO, "(INFO)", "scan finished in", basePath)
-		if (len(matchPathPattern) > 0 && !config.Options.ContentMatchDependsOnPathMatch) || len(matchContent) > 0 {
+		if len(matchingFiles) > 0 {
 			LogMessage(LOG_ALERT, "(INFO)", "Matching files: ")
-			// output pattern matchs
-			if !config.Options.ContentMatchDependsOnPathMatch {
-				for i := 0; i < len(matchPathPattern); i++ {
-					LogMessage(LOG_ALERT, " |", matchContent[i])
-				}
-			}
-
-			// output content, checksum and yara match
-			for i := 0; i < len(matchContent); i++ {
-				LogMessage(LOG_ALERT, " |", matchContent[i])
+			for i := 0; i < len(matchingFiles); i++ {
+				LogMessage(LOG_ALERT, " |", matchingFiles[i])
 			}
 
 			// copy file matchs
 			if config.Output.CopyMatchingFiles {
 				LogMessage(LOG_INFO, "(INFO)", "Copy all matching files")
-				if !config.Options.ContentMatchDependsOnPathMatch {
-					InitProgressbar(int64(len(matchPathPattern)) + int64(len(matchContent)))
-					for i := 0; i < len(matchPathPattern); i++ {
-						ProgressBarStep()
-						FileCopy(matchPathPattern[i], config.Output.FilesCopyPath, config.Output.Base64Files)
-					}
-				} else {
-					InitProgressbar(int64(len(matchContent)))
-				}
-
-				for i := 0; i < len(matchContent); i++ {
-					ProgressBarStep()
-					FileCopy(matchContent[i], config.Output.FilesCopyPath, config.Output.Base64Files)
+				for i := 0; i < len(matchingFiles); i++ {
+					FileCopy(matchingFiles[i], config.Output.FilesCopyPath, config.Output.Base64Files)
 				}
 			}
 		} else {
@@ -241,11 +273,26 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pNoAdvUI bo
 		}
 	}
 
+	// Calculate scan duration and send completion event
+	scanDuration := time.Since(scanStartTime)
+
+	// Forward scan completion event if event forwarding is enabled
+	if config.EventForwarding.Enabled {
+		ForwardScanCompleteEvent(totalFilesScanned, totalMatchesFound, totalErrorsEncountered, scanDuration)
+
+		// Stop event forwarding
+		StopEventForwarding()
+	}
+
+	LogMessage(LOG_INFO, "(INFO)", fmt.Sprintf("Scan completed in %v", scanDuration))
+	LogMessage(LOG_INFO, "(INFO)", fmt.Sprintf("Files scanned: %d, Matches found: %d, Errors: %d",
+		totalFilesScanned, totalMatchesFound, totalErrorsEncountered))
+
 	ExitProgram(0, !UIactive)
 }
 
 // FastFinderInit return basic host informations / check for mutex and return current user permissions
-func FastFinderInit(config Configuration, pConfigPath string, pSfxPath string, pHideWindow bool) {
+func FastFinderInit(config Configuration, pConfigPath string, pSfxPath string) {
 	var err error
 
 	LogMessage(LOG_INFO, "(INIT)", "Fastfinder v"+FASTFINDER_VERSION+" with embedded YARA v"+YARA_VERSION)
@@ -255,23 +302,35 @@ func FastFinderInit(config Configuration, pConfigPath string, pSfxPath string, p
 	LogMessage(LOG_INFO, "(INIT)", "Current directory:", GetCurrentDirectory())
 	LogMessage(LOG_INFO, "(INIT)", "Max file size scan:", fmt.Sprintf("%dMB", config.AdvancedParameters.MaxScanFilesize))
 	LogMessage(LOG_INFO, "(INIT)", "Config file:", pConfigPath)
-	LogMessage(LOG_INFO, "(INIT)", "Fastfinder executable SHA256 checksum:", FileSHA256Sum(os.Args[0]))
+
+	// Resolve executable path (handles cases where binary is in PATH)
+	execPath := os.Args[0]
+	if !filepath.IsAbs(execPath) {
+		if absPath, err := exec.LookPath(execPath); err == nil {
+			execPath = absPath
+		} else if absPath, err := filepath.Abs(execPath); err == nil {
+			execPath = absPath
+		}
+	}
+	LogMessage(LOG_INFO, "(INIT)", "Fastfinder executable SHA256 checksum:", FileSHA256Sum(execPath))
 	LogMessage(LOG_INFO, "(INIT)", "Configuration file SHA256 checksum:", FileSHA256Sum(pConfigPath))
 
 	if len(pSfxPath) == 0 {
-		// create mutex
-		if _, err = CreateMutex("fastfinder"); err != nil {
-			LogMessage(LOG_ERROR, "(ERROR)", "Only one instance or fastfinder can be launched:", err.Error())
-			ExitProgram(1, !UIactive)
+		disableMutex := os.Getenv("FASTFINDER_DISABLE_MUTEX") == "1"
+		if !disableMutex {
+			// create mutex
+			if _, err = CreateMutex("fastfinder"); err != nil {
+				LogMessage(LOG_ERROR, "(ERROR)", "Only one instance or fastfinder can be launched:", err.Error())
+				ExitProgram(1, !UIactive)
+			}
+		} else {
+			LogMessage(LOG_INFO, "(INIT)", "Mutex disabled via FASTFINDER_DISABLE_MUTEX=1 (container mode)")
 		}
 
 		// Retrieve current user permissions
 		admin, elevated := CheckCurrentUserPermissions()
 		if !admin && !elevated {
 			LogMessage(LOG_ERROR, "(WARNING) fastfinder is not running with fully elevated righs. Notice that the analysis will be partial and limited to the current user scope")
-			if !pHideWindow {
-				time.Sleep(3 * time.Second)
-			}
 		}
 	}
 }

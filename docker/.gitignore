@@ -1,0 +1,20 @@
+# Docker outputs
+output/
+logs/
+*.log
+
+# Environment files (may contain secrets)
+.env
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Build artifacts
+bin/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini

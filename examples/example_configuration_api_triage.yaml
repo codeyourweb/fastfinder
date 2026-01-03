@@ -3,7 +3,7 @@ input:
     content:
         grep: []
         yara:
-          - './examples/example_windows_api_triage.yar'
+          - './example_windows_api_triage.yar'
         checksum: []
 options:
     contentMatchDependsOnPathMatch: false

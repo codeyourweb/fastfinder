@@ -1,65 +1,141 @@
-![Fastfinder logo](./Icon.png)
-# _FastFinder_ - Incident Response - Fast suspicious file finder
-[![Golang](https://img.shields.io/badge/Go-1.17-blue.svg)](https://golang.org) ![Linux](https://img.shields.io/badge/Supports-Linux-green.svg) ![windows](https://img.shields.io/badge/Supports-windows-green.svg)
-![build windows workflow](https://github.com/codeyourweb/fastfinder/actions/workflows/go_build_windows.yml/badge.svg) ![build windows workflow](https://github.com/codeyourweb/fastfinder/actions/workflows/go_build_linux.yml/badge.svg)
+![FastFinder Logo](./Icon.png)
 
-## What is this project designed for?
-_FastFinder_ is a lightweight tool made for threat hunting, live forensics and triage on both Windows and Linux Platforms. It is 
-focused on endpoint enumeration and suspicious file finding based on various criterias:
-* file path / name
-* md5 / sha1 / sha256 checksum
-* simple string content match
-* complex content condition(s) based on YARA
+# FastFinder
 
-## Ready for battle!
-* fastfinder has been tested in real cases in multiple CERT, CSIRT and SOC use cases
-* examples directory now include real malwares / suspect behaviors or vulnerability scan examples
+**A lightweight incident response tool for threat hunting and forensic triage**
 
-### Installation 
-Compiled release of this software are available. If you want to compile 
-from sources, it could be a little bit tricky because it strongly depends of 
-_go-yara_ and CGO compilation. Anyway, you'll find a detailed documentation [for windows](README.windows-compilation.md) and [for linux](README.linux-compilation.md)
+[![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?style=flat-square&logo=go)](https://golang.org)
+[![License](https://img.shields.io/github/license/codeyourweb/fastfinder?style=flat-square)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/codeyourweb/fastfinder?style=flat-square)](https://github.com/codeyourweb/fastfinder/releases)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/codeyourweb/fastfinder/go_build_windows.yml?style=flat-square&label=Windows)](https://github.com/codeyourweb/fastfinder/actions)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/codeyourweb/fastfinder/go_build_linux.yml?style=flat-square&label=Linux)](https://github.com/codeyourweb/fastfinder/actions)
+[![Platform Support](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-brightgreen?style=flat-square)](#installation)
 
-### Usage 
+## ✨ Overview
+
+FastFinder is a powerful, lightweight incident response tool designed for cybersecurity professionals conducting threat hunting, live forensics, and endpoint triage. Built for both Windows and Linux platforms, it excels at rapid suspicious file discovery using multiple detection criteria.
+
+### 🔍 Key Detection Capabilities
+
+- **Path-based Detection**: File path and name pattern matching
+- **Hash Verification**: MD5, SHA1, and SHA256 checksum validation
+- **Content Analysis**: Simple string matching and complex YARA rule evaluation
+- **Multi-platform Support**: Native Windows and Linux compatibility
+
+### 🛡️ Battle-Tested
+
+- ✅ **Production Ready**: Successfully deployed in real-world incident response scenarios
+- ✅ **Industry Validated**: Used by multiple CERTs, CSIRTs, and SOC teams
+- ✅ **Comprehensive Examples**: Includes real malware samples and vulnerability scan scenarios
+
+## 📸 Screenshots
+
+![Basic UI](./screenshots/fastfinder_basicUI.jpg)
+*Basic User Interface*
+
+![Configuration](./screenshots/fastfinder_configuration_picker.jpg)
+*Configuration Selection*
+
+![Scan Results](./screenshots/fastfinder_matchs.jpg)
+*Scan Results and Matches*
+
+</details>
+
+## 🚀 Installation
+
+### Quick Start (Recommended)
+
+**📥 [Download Latest Release](https://github.com/codeyourweb/fastfinder/releases/latest)**
+
+### Building from Source
+
+> ⚠️ **Note**: Compilation requires CGO and YARA dependencies. See platform-specific guides:
+
+- 🪟 **Windows**: [Compilation Guide](README.windows-compilation.md)
+- 🐧 **Linux**: [Compilation Guide](README.linux-compilation.md)
+
+### Docker Installation (No Dependencies Required!)
+
+The easiest way to build FastFinder without installing any dependencies:
+
+```bash
+# Build binaries for Linux and Windows
+cd docker
+make build-binaries
+
+# Binaries will be in ./bin/
+# - fastfinder-linux-amd64
+# - fastfinder-windows-amd64.exe
 ```
-  ___       __  ___  ___         __   ___  __
- |__   /\  /__`  |  |__  | |\ | |  \ |__  |__)
- |    /~~\ .__/  |  |    | | \| |__/ |___ |  \
 
-  2021-2022 | Jean-Pierre GARNIER | @codeyourweb
-  https://github.com/codeyourweb/fastfinder  
+#### Docker Runtime Container
 
-usage: fastfinder [-h|--help] [-c|--configuration "<value>"] [-b|--build
-                  "<value>"] [-o|--output "<value>"] [-n|--no-window]
-                  [-u|--no-userinterface] [-v|--verbosity <integer>]
-                  [-t|--triage]
+Run FastFinder inside a privileged Docker container to scan volumes or mounted filesystems:
 
-                  Incident Response - Fast suspicious file finder
+```powershell
+# Build the runtime image (includes FastFinder + YARA + editors)
+.\docker-helper.ps1 build-runtime
 
-Arguments:
+# Run scan with configuration directory
+.\docker-helper.ps1 run-runtime -ConfigPath "C:\path\to\config_folder" -ScanPath "C:\data\to\scan"
 
-  -h  --help              Print help information
-  -c  --configuration     Fastfind configuration file. Default:
-  -b  --build             Output a standalone package with configuration and
-                          rules in a single binary
-  -o  --output            Save fastfinder logs in the specified file
-  -n  --no-window         Hide fastfinder window
-  -u  --no-userinterface  Hide advanced user interface
-  -v  --verbosity         File log verbosity
-                                 | 4: Only alert
-                                 | 3: Alert and errors
-                                 | 2: Alerts,errors and I/O operations
-                                 | 1: Full verbosity)
-                                . Default: 3
-  -t  --triage            Triage mode (infinite run - scan every new file in
-                          the input path directories). Default: false
-``` 
+# Interactive shell mode (no scan, just shell access)
+.\docker-helper.ps1 run-runtime -Interactive
+```
 
-Depending on where you are looking for files, _FastFinder_ could be used with admin OR simple user rights. 
+### Requirements
+
+- **Runtime**: No dependencies required for pre-compiled binaries
+- **Compilation**: Go 1.24+, CGO, libyara
+- **Privileges**: Administrative rights recommended for full system access
+
+## 📖 Usage
+
+### Command Line Interface
+
+```bash
+fastfinder [OPTIONS]
+```
+
+### Available Options
+
+| Option | Description | Default |
+|--------|-------------|----------|
+| `-h, --help` | Print help information | |
+| `-c, --configuration` | Configuration file path | |
+| `-b, --build` | Create standalone binary with embedded config | |
+| `-r, --root` | Scan root path (override drive enumeration) | |
+| `-s, --silent` | Silent mode - run without any visible window or console | |
+| `-v, --verbosity` | Log verbosity level (1-5) | `3` |
+| `-t, --triage` | Continuous monitoring mode | `false` |
+
+### Verbosity Levels
+
+- **Level 1**: Alerts only
+- **Level 2**: Alerts and warnings
+- **Level 3**: Alerts and errors (default)
+- **Level 4**: Alerts, errors, and I/O operations  
+- **Level 5**: Full verbosity (for debug purpose or really advanced logging)
+
+### Quick Examples
+
+```bash
+# Basic scan with configuration file
+./fastfinder -c config.yaml
+
+# Continuous monitoring mode
+./fastfinder -c config.yaml -t
+
+# Create standalone executable
+./fastfinder -c config.yaml -b standalone_scanner.exe
+```
+
+> 💡 **Tip**: FastFinder can run with standard user privileges, but administrative rights provide access to all system files.
 
 ### Scan and export file match according to your needs
 configuration examples are available [there](./examples)
-``` 
+
+```yaml 
 input:
     path: [] # match file path AND / OR file name based on simple string 
     content:
@@ -79,27 +155,118 @@ output:
 advancedparameters:
     yaraRC4Key: ''    # yara rules can be (un)/ciphered using the specified RC4 key
     maxScanFilesize: 2048 #  ignore files up to maxScanFileSize Mb (default: 2048)               
-    cleanMemoryIfFileGreaterThanSize: 512 # clean fastfinder internal memory after heavy file scan (default: 512Mb) 
+    cleanMemoryIfFileGreaterThanSize: 512 # clean fastfinder internal memory after heavy file scan (default: 512Mb)
+eventforwarding:
+  enabled: true
+  buffer_size: 5
+  flush_time_seconds: 10
+  file: # save app activity in jsonl files
+    enabled: true
+    directory_path: "./event_logs"
+    rotate_minutes: 1    # Rotate every minute for testing
+    max_file_size_mb: 1  # Rotate at 1MB for testing
+    retain_files: 5      # Keep 5 old files
+  http: # forward app activity with HTTP POST json data
+    enabled: false
+    url: "https://your-forwarder-url.com/api/events"
+    ssl_verify: false
+    timeout_seconds: 10
+    headers:
+      Authorization: "Bearer YOUR_API_KEY"
+      MY-CUSTOM-HEADER: "My-Header-Value"
+    retry_count: 3
+  filters:
+    event_types:
+      - "error"
+      - "warning"
+      - "alert" 
+      - "info"
 ``` 
+
 ### Search everywhere or in specified paths:
 * use '?' in paths for simple char wildcard (eg. powershe??.exe)
 * use '\\\*' in paths for multiple chars wildcard (eg. \\\*.exe)
 * regular expressions are also available , just enclose paths with slashes (eg. /[0-9]{8}\\.exe/)
 * environment variables can also be used (eg. %TEMP%\\myfile.exe)
 
+### YARA Rules Path Resolution
+
+**Relative paths in YAML configuration are resolved relative to the configuration file location:**
+
+```yaml
+input:
+  content:
+    yara:
+      - "./example_rule_linux.yar"           # Looks in same folder as config.yaml
+      - "./subfolder/custom_rules.yar"       # Looks in subfolder relative to config
+      - "/absolute/path/to/rule.yar"         # Absolute paths work as-is
+      - "https://example.com/rules.yar"      # URLs are also supported
+```
+
+Example directory structure:
+```
+project/
+├── config.yaml
+├── example_rule_linux.yar          # ✅ Found by "./example_rule_linux.yar"
+└── rules/
+    └── custom.yar                  # ✅ Found by "./rules/custom.yar"
+```
+
 ### Important notes
 * input path are always case INSENSITIVE
 * content search on string (grep) are always case SENSITIVE
 * backslashes SHOULD NOT be escaped (except with regular expressions)
+* **YARA rules must exist** - missing rules will cause FastFinder to exit with an error
 For more informations, take a look at the [examples](./examples)
 
-## About this project
-I initially created this project to automate fast system oriented IOC detection on a wide computer network. 
-It fulfills the needs I have today. Nevertheless if you have complementary ideas, do not hesitate 
-to ask for, I will see to implement them if they can be useful for everyone.
-On the other hand, pull request will be studied carefully.
+## 🤝 Contributing
 
-## Future releases
-I don't plan to add any additional features right now. The next release will be focused on:
-* Unit testing / Code testing coverage / CI
-* Build more examples based on live malwares tradecraft and threat actor campaigns
+We welcome contributions! Please see our contribution guidelines:
+
+1. **Fork** the repository
+2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
+3. **Commit** your changes (`git commit -m 'Add amazing feature'`)
+4. **Push** to the branch (`git push origin feature/amazing-feature`)
+5. **Open** a Pull Request
+
+### Development Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/codeyourweb/fastfinder.git
+cd fastfinder
+
+# Install dependencies (see compilation guides)
+# Build from source
+go build -tags yara_static,gio -a -ldflags '-s -w' .
+
+# Run tests
+go test ./...
+```
+
+## 📜 License
+
+This project is licensed under the AGPL License - see the [LICENSE](LICENSE) file for details.
+
+## 🚀 Support
+
+- **🐛 Report Issues**: [GitHub Issues](https://github.com/codeyourweb/fastfinder/issues)
+- **💬 Discussions**: [GitHub Discussions](https://github.com/codeyourweb/fastfinder/discussions)
+- **📧 Security**: Report security vulnerabilities privately
+
+## 📊 Project Stats
+
+![GitHub stars](https://img.shields.io/github/stars/codeyourweb/fastfinder?style=social)
+![GitHub forks](https://img.shields.io/github/forks/codeyourweb/fastfinder?style=social)
+
+
+## 🙏 Acknowledgments
+
+* **Hilko Bengen (@hillu)** for his wonderful [yara implementation in Go](https://github.com/hillu/go-yara) and also for his precious help debugging CGO issues 
+* **Marc Ochsenmeier** for his precious help, feedbacks but also for having talking on my project
+* **Vitali Kremez** ✝ for inspiring me on many aspects that made me build fastfinder
+* **m0n4** (https://github.com/m0n4) for regularly challenging me technically and contributing much more to the birth of this project than he could ever imagine.
+---
+
+**Made with ❤️ by the cybersecurity community**  
+Created by Jean-Pierre GARNIER (@codeyourweb) • 2021-2026

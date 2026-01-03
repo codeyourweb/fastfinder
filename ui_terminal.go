@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -157,7 +156,7 @@ func OpenFileDialog() {
 
 	// function definition for adding files and directories to the treeview
 	add := func(target *tview.TreeNode, p string) {
-		files, err := ioutil.ReadDir(p)
+		files, err := os.ReadDir(p)
 		if err != nil {
 			UIapp.Stop()
 		}

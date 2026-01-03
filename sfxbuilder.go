@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -16,9 +15,9 @@ import (
 )
 
 // BuildSFX creates a self-extracting rar zip and embed the fastfinder executable / configuration file / yara rules
-func BuildSFX(configuration Configuration, outputSfxExe string, logLevel int, logFileLocation string, noAdvUI bool, hideWindow bool) {
+func BuildSFX(configuration Configuration, outputSfxExe string, logLevel int, noAdvUI bool) {
 	// compress inputDirectory into archive
-	archive := fastfinderResourcesCompress(configuration, logLevel, logFileLocation, noAdvUI, hideWindow)
+	archive := fastfinderResourcesCompress(configuration, logLevel, noAdvUI)
 
 	file, err := os.Create(outputSfxExe)
 	if err != nil {
@@ -33,7 +32,7 @@ func BuildSFX(configuration Configuration, outputSfxExe string, logLevel int, lo
 }
 
 // fastfinderResourcesCompress compress every package file into the zip archive
-func fastfinderResourcesCompress(configuration Configuration, logLevel int, logFileLocation string, noAdvUI bool, hideWindow bool) bytes.Buffer {
+func fastfinderResourcesCompress(configuration Configuration, logLevel int, noAdvUI bool) bytes.Buffer {
 	var buffer bytes.Buffer
 	archive := zip.NewWriter(&buffer)
 
@@ -69,7 +68,7 @@ func fastfinderResourcesCompress(configuration Configuration, logLevel int, logF
 			if err != nil {
 				LogMessage(LOG_ERROR, "YARA file URL unreachable", configuration.Input.Content.Yara[i], err)
 			}
-			fsFile, err = ioutil.ReadAll(response.Body)
+			fsFile, err = io.ReadAll(response.Body)
 			if err != nil {
 				LogMessage(LOG_ERROR, "YARA file URL content unreadable", configuration.Input.Content.Yara[i], err)
 			}
@@ -140,23 +139,8 @@ func fastfinderResourcesCompress(configuration Configuration, logLevel int, logF
 		sfxcomment += " -u"
 	}
 
-	// output log file
-	if len(logFileLocation) > 0 {
-		//sfxcomment += " -o \"" + logFileLocation + "\""
-		sfxcomment += fmt.Sprintf(" -o %s", logFileLocation)
-	}
-
-	if hideWindow && runtime.GOOS == "windows" {
-		sfxcomment += " -n"
-		sfxcomment += "\r\n" +
-			"Silent=1"
-	}
-
 	archive.SetComment(sfxcomment)
 
-	if err != nil {
-		return buffer
-	}
 	err = archive.Close()
 
 	if err != nil {
