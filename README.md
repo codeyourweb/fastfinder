@@ -104,10 +104,9 @@ fastfinder [OPTIONS]
 | `-h, --help` | Print help information | |
 | `-c, --configuration` | Configuration file path | |
 | `-b, --build` | Create standalone binary with embedded config | |
-| `-o, --output` | Output log file path | |
-| `-n, --no-window` | Hide application window | `false` |
-| `-u, --no-userinterface` | Disable advanced UI | `false` |
-| `-v, --verbosity` | Log verbosity level (1-4) | `3` |
+| `-r, --root` | Scan root path (override drive enumeration) | |
+| `-s, --silent` | Silent mode - run without any visible window or console | |
+| `-v, --verbosity` | Log verbosity level (1-5) | `3` |
 | `-t, --triage` | Continuous monitoring mode | `false` |
 
 ### Verbosity Levels
@@ -127,11 +126,8 @@ fastfinder [OPTIONS]
 # Continuous monitoring mode
 ./fastfinder -c config.yaml -t
 
-# Silent mode with file output
-./fastfinder -c config.yaml -n -o scan_results.log
-
 # Create standalone executable
-./fastfinder -b standalone_scanner.exe
+./fastfinder -c config.yaml -b standalone_scanner.exe
 ```
 
 > 💡 **Tip**: FastFinder can run with standard user privileges, but administrative rights provide access to all system files.

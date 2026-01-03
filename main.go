@@ -35,6 +35,7 @@ func main() {
 	pSilentMode := parser.Flag("s", "silent", &argparse.Options{Required: false, Help: "Silent mode - run without any visible window or console"})
 	pLogVerbosity := parser.Int("v", "verbosity", &argparse.Options{Required: false, Default: 3, Help: "File log verbosity \n\t\t\t\t | 1: Only alerts\n\t\t\t\t | 2: Alerts and warnings\n\t\t\t\t | 3: Alerts,warnings and errors\n\t\t\t\t | 4: Alerts,warnings,errors and I/O operations\n\t\t\t\t | 5: Full verbosity)\n\t\t\t\t"})
 	pTriage := parser.Flag("t", "triage", &argparse.Options{Required: false, Default: false, Help: "Triage mode (infinite run - scan every new file in the input path directories)"})
+	pRootPath := parser.String("r", "root", &argparse.Options{Required: false, Default: "", Help: "Scan root path (override drive enumeration to scan specific directory)"})
 
 	// handle argument parsing error
 	err := parser.Parse(os.Args)
@@ -45,11 +46,11 @@ func main() {
 	// Determine if any parameter (other than program name) was provided
 	hasParameters := len(os.Args) > 1
 
-	RunProgramWithParameters(*pConfigPath, *pSfxPath, *pSilentMode, *pLogVerbosity, *pTriage, hasParameters)
+	RunProgramWithParameters(*pConfigPath, *pSfxPath, *pSilentMode, *pLogVerbosity, *pTriage, *pRootPath, hasParameters)
 }
 
 // RunProgramWithParameters used specified argv and run fastfinder
-func RunProgramWithParameters(pConfigPath string, pSfxPath string, pSilentMode bool, pLogVerbosity int, pTriage bool, hasParameters bool) {
+func RunProgramWithParameters(pConfigPath string, pSfxPath string, pSilentMode bool, pLogVerbosity int, pTriage bool, pRootPath string, hasParameters bool) {
 	// Silent mode: no output at all
 	if pSilentMode {
 		UIactive = false
@@ -89,17 +90,17 @@ func RunProgramWithParameters(pConfigPath string, pSfxPath string, pSilentMode b
 
 	// run app
 	if UIactive {
-		go MainFastfinderRoutine(config, pConfigPath, false, pSfxPath, pTriage, pLogVerbosity)
+		go MainFastfinderRoutine(config, pConfigPath, false, pSfxPath, pTriage, pLogVerbosity, pRootPath)
 		MainWindow()
 	} else {
 		LogMessage(LOG_INFO, LineBreak+"================================================"+LineBreak+RenderFastfinderLogo()+"================================================"+LineBreak)
-		MainFastfinderRoutine(config, pConfigPath, false, pSfxPath, pTriage, pLogVerbosity)
+		MainFastfinderRoutine(config, pConfigPath, false, pSfxPath, pTriage, pLogVerbosity, pRootPath)
 	}
 
 }
 
 // MainFastfinderRoutine is used in every scan routine and based on config file directives
-func MainFastfinderRoutine(config Configuration, pConfigPath string, pNoAdvUI bool, pSfxPath string, pTriage bool, pLoglevel int) {
+func MainFastfinderRoutine(config Configuration, pConfigPath string, pNoAdvUI bool, pSfxPath string, pTriage bool, pLoglevel int, pRootPath string) {
 	var rules *yara.Rules
 
 	// Tracking variables for event forwarding
@@ -145,7 +146,16 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pNoAdvUI bo
 	}
 
 	// drives enumeration
-	baseDrives, excludedPaths := DriveEnumeration(config)
+	var baseDrives []string
+	var excludedPaths []string
+
+	if len(pRootPath) > 0 {
+		LogMessage(LOG_INFO, "(INIT)", "Using custom scan root:", pRootPath)
+		baseDrives = []string{pRootPath}
+		excludedPaths = []string{}
+	} else {
+		baseDrives, excludedPaths = DriveEnumeration(config)
+	}
 
 	// triage mode start
 	if pTriage {

@@ -41,6 +41,7 @@ Commands:
     build-runtime      Build the runtime image (FastFinder inside container)
     run-runtime        Run FastFinder inside a container named "runtime"
                          (add -Interactive to drop into shell instead of running the scan)
+                         (add -Triage for continuous monitoring mode)
   clean              Remove Docker build cache
   help               Show this help message
 
@@ -60,8 +61,14 @@ Examples:
     # Run FastFinder inside a privileged container named "runtime"
         .\docker-helper.ps1 run-runtime -ConfigPath ./examples/ -ScanPath /your/root/path
 
+    # Run with specific config file (YARA rules must be in same directory)
+    .\docker-helper.ps1 run-runtime -ConfigPath "C:\scans\my_config.yaml" -ScanPath "C:\target"
+
     # Start runtime container in interactive shell (no scan)
     .\docker-helper.ps1 run-runtime -Interactive
+
+    # Run in triage mode (continuous monitoring)
+    .\docker-helper.ps1 run-runtime -ConfigPath "C:\scans\my_config.yaml" -ScanPath "C:\target" -Triage
 
   # Clean up Docker build cache
   .\docker-helper.ps1 clean
@@ -188,7 +195,8 @@ function Run-Runtime {
     param(
         [string]$ConfigPath = "$ProjectRoot/examples",
         [string]$ScanPath = "$ProjectRoot",
-        [switch]$Interactive
+        [switch]$Interactive,
+        [switch]$Triage
     )
 
     # Ensure runtime image exists; build if missing
@@ -216,10 +224,12 @@ function Run-Runtime {
     if ($configIsDir) {
         # Mount directory; expect config.yml inside
         $HostConfigDir = $ResolvedConfig
+        Write-Info "Config mode: directory mounting - looking for config.yml in $ResolvedConfig"
     } else {
         # Mount parent dir; keep config filename
         $HostConfigDir = Split-Path $ResolvedConfig
         $configFileInContainer = "/config/" + (Split-Path $ResolvedConfig -Leaf)
+        Write-Info "Config mode: file mounting - using $(Split-Path $ResolvedConfig -Leaf) from $HostConfigDir"
     }
 
     # Allow Linux-style scan paths (e.g. /host) without Windows Test-Path check
@@ -246,6 +256,10 @@ function Run-Runtime {
         $commandArgs = @()
     } else {
         $commandArgs = @("-c", $configFileInContainer)
+        if ($Triage) {
+            $commandArgs += "-t"
+            Write-Info "Triage mode enabled - continuous monitoring active"
+        }
     }
 
     docker run `
@@ -266,13 +280,32 @@ function Run-Runtime {
 
 # Clean up Docker build cache
 function Clean-Docker {
-    Write-Warning "Cleaning up Docker build cache..."
+    Write-Warning "Cleaning up FastFinder Docker resources..."
     
-    # Prune build cache
-    Write-Info "Pruning Docker build cache..."
-    docker builder prune -f
+    # Remove FastFinder runtime containers
+    Write-Info "Removing FastFinder containers..."
+    $containers = docker ps -a --filter "name=runtime" --format "{{.ID}}"
+    if ($containers) {
+        docker rm -f $containers 2>$null | Out-Null
+        Write-Success "Removed FastFinder containers"
+    } else {
+        Write-Info "No FastFinder containers found"
+    }
     
-    Write-Success "Cleanup complete!"
+    # Remove FastFinder images
+    Write-Info "Removing FastFinder images..."
+    $images = docker images --filter "reference=fastfinder:*" --format "{{.ID}}"
+    if ($images) {
+        docker rmi -f $images 2>$null | Out-Null
+        Write-Success "Removed FastFinder images"
+    } else {
+        Write-Info "No FastFinder images found"
+    }
+    
+    # Optional: prune all build cache (affects all projects!)
+    Write-Warning "To clean ALL Docker build cache (all projects), run: docker builder prune -f"
+    
+    Write-Success "FastFinder cleanup complete!"
 }
 
 # Main logic

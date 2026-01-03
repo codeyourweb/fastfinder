@@ -166,6 +166,7 @@ func CheckFileChecksumAndContent(path string, content []byte, hashList []string,
 
 // checkForChecksum calculate content checksum and check if it is in hashlist
 func checkForChecksum(path string, content []byte, hashList []string) (matchingFiles []string) {
+	LogMessage(LOG_VERBOSE, "(SCAN)", "Calculating checksums for", path)
 	var hashs []string
 	hashs = append(hashs, fmt.Sprintf("%x", md5.Sum(content)))
 	hashs = append(hashs, fmt.Sprintf("%x", sha1.Sum(content)))
@@ -173,6 +174,7 @@ func checkForChecksum(path string, content []byte, hashList []string) (matchingF
 
 	for _, c := range hashs {
 		if Contains(hashList, c) && !Contains(matchingFiles, path) {
+			LogMessage(LOG_ALERT, "(ALERT)", "Checksum match:", c, "in", path)
 			matchingFiles = append(matchingFiles, path)
 		}
 	}
@@ -182,8 +184,10 @@ func checkForChecksum(path string, content []byte, hashList []string) (matchingF
 
 // checkForStringPattern check if file content matches any specified pattern
 func checkForStringPattern(path string, content []byte, patterns []string) (matchingFiles []string) {
+	LogMessage(LOG_VERBOSE, "(SCAN)", "Checking grep patterns in", path)
 	for _, expression := range patterns {
 		if strings.Contains(string(content), expression) {
+			LogMessage(LOG_ALERT, "(ALERT)", "Grep match:", expression, "in", path)
 			matchingFiles = append(matchingFiles, path)
 		}
 	}
