@@ -17,23 +17,87 @@ jobs:
             pkg-config \
             automake \
             libtool \
+            gcc-aarch64-linux-gnu \
+            libc6-dev-arm64-cross \
+            gcc-i686-linux-gnu \
+            libc6-dev-i386-cross \
+            qemu-user-static \
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
             go-version: 1.24
-      - name: Install YARA v4.5.5
+      - name: Install YARA v4.5.5 (AMD64)
         run: |
           YARA_VERSION=4.5.5
           wget --no-verbose -O- https://github.com/VirusTotal/yara/archive/v${YARA_VERSION}.tar.gz | tar -C /tmp -xzf -
-          ( cd /tmp/yara-${YARA_VERSION} && ./bootstrap.sh && sudo ./configure && sudo make && sudo make install )
+          cd /tmp/yara-${YARA_VERSION} && ./bootstrap.sh && sudo ./configure && sudo make && sudo make install
+          
+      - name: Install YARA v4.5.5 (ARM64)
+        run: |
+          YARA_VERSION=4.5.5
+          # Uses previously unpacked source if available, or fetch again
+          [ -d "/tmp/yara-${YARA_VERSION}" ] || wget --no-verbose -O- https://github.com/VirusTotal/yara/archive/v${YARA_VERSION}.tar.gz | tar -C /tmp -xzf -
+          cd /tmp/yara-${YARA_VERSION} 
+          make clean || true
+          ./bootstrap.sh
+          # Build static ARM64 without OpenSSL for simplicity in CI
+          ./configure --host=aarch64-linux-gnu --prefix=/usr/local/aarch64 --enable-static --disable-shared --disable-crypto 
+          make -j$(nproc)
+          sudo make install
+
+      - name: Install YARA v4.5.5 (i386)
+        run: |
+          YARA_VERSION=4.5.5
+          [ -d "/tmp/yara-${YARA_VERSION}" ] || wget --no-verbose -O- https://github.com/VirusTotal/yara/archive/v${YARA_VERSION}.tar.gz | tar -C /tmp -xzf -
+          cd /tmp/yara-${YARA_VERSION} 
+          make clean || true
+          ./bootstrap.sh
+          ./configure --host=i686-linux-gnu --prefix=/usr/local/i686 --enable-static --disable-shared --disable-crypto 
+          make -j$(nproc)
+          sudo make install
+
       - uses: actions/checkout@v2
       - name: Run Unit Tests
         run: |
            sudo ldconfig
+           # Test AMD64
            go test ./... -v
-      - name: Building Fastfinder
+           
+      - name: Building Fastfinder AMD64
         run: |
-           go build -trimpath -tags yara_static -a -ldflags '-s -w -extldflags "-static"' .
-           ls
-           sudo chmod +x fastfinder
-           sudo ./fastfinder -h
+           go build -trimpath -tags yara_static -a -ldflags '-s -w -extldflags "-static"' -o fastfinder-amd64 .
+           ls -l fastfinder-amd64
+           sudo chmod +x fastfinder-amd64
+           sudo ./fastfinder-amd64 -h
+
+      - name: Building Fastfinder ARM64
+        run: |
+           export CGO_ENABLED=1
+           export GOOS=linux
+           export GOARCH=arm64
+           export CC=aarch64-linux-gnu-gcc
+           export CGO_CFLAGS="-I/usr/local/aarch64/include"
+           export CGO_LDFLAGS="-L/usr/local/aarch64/lib -lyara -static"
+           
+           go build -trimpath -tags yara_static -a -ldflags '-s -w -extldflags "-static"' -o fastfinder-arm64 .
+           ls -l fastfinder-arm64
+           sudo chmod +x fastfinder-arm64
+           
+           # Verify execution via QEMU
+           ./fastfinder-arm64 -h
+
+      - name: Building Fastfinder i386
+        run: |
+           export CGO_ENABLED=1
+           export GOOS=linux
+           export GOARCH=386
+           export CC=i686-linux-gnu-gcc
+           export CGO_CFLAGS="-I/usr/local/i686/include"
+           export CGO_LDFLAGS="-L/usr/local/i686/lib -lyara -static"
+           
+           go build -trimpath -tags yara_static -a -ldflags '-s -w -extldflags "-static"' -o fastfinder-386 .
+           ls -l fastfinder-386
+           sudo chmod +x fastfinder-386
+           
+           # Verify execution (native usually works on AMD64)
+           ./fastfinder-386 -h

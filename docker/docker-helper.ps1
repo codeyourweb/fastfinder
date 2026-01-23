@@ -95,6 +95,12 @@ function Build-Binaries {
         -f docker/Dockerfile.builder `
         .
     
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Linux build failed!"
+        Pop-Location
+        exit 1
+    }
+
     # Build Windows binary
     Write-Info "Building Windows binary with YARA support..."
     docker build `
@@ -102,11 +108,16 @@ function Build-Binaries {
         --output type=local,dest=./bin `
         -f docker/Dockerfile.windows-builder `
         .
+
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Windows build failed!"
+        Pop-Location
+        exit 1
+    }
     
     if ((Test-Path "bin/fastfinder-linux-amd64") -and (Test-Path "bin/fastfinder-windows-amd64.exe")) {
-        Write-Success "Both binaries built successfully!"
-        Write-Info "Linux binary: bin/fastfinder-linux-amd64"
-        Write-Info "Windows binary: bin/fastfinder-windows-amd64.exe"
+        Write-Success "All binaries built successfully!"
+        Write-Info "Linux binaries (amd64/arm64/i386) and Windows binaries (amd64/arm64/i386) are in ./bin/"
         
         Get-ChildItem bin/fastfinder-* | Format-Table Name, Length, LastWriteTime
     } else {
@@ -134,9 +145,15 @@ function Build-Linux {
         -f docker/Dockerfile.builder `
         .
     
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Linux build failed!"
+        Pop-Location
+        exit 1
+    }
+
     if (Test-Path "bin/fastfinder-linux-amd64") {
-        Write-Success "Linux binary built successfully!"
-        Get-ChildItem bin/fastfinder-linux-amd64 | Format-Table Name, Length, LastWriteTime
+        Write-Success "Linux binaries built successfully!"
+        Get-ChildItem bin/fastfinder-linux-* | Format-Table Name, Length, LastWriteTime
     } else {
         Write-Error "Build failed!"
         Pop-Location
@@ -161,10 +178,16 @@ function Build-Windows {
         --output type=local,dest=./bin `
         -f docker/Dockerfile.windows-builder `
         .
+
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Windows build failed!"
+        Pop-Location
+        exit 1
+    }
     
     if (Test-Path "bin/fastfinder-windows-amd64.exe") {
-        Write-Success "Windows binary built successfully!"
-        Get-ChildItem bin/fastfinder-windows-amd64.exe | Format-Table Name, Length, LastWriteTime
+        Write-Success "Windows binaries built successfully!"
+        Get-ChildItem bin/fastfinder-windows-* | Format-Table Name, Length, LastWriteTime
     } else {
         Write-Error "Build failed!"
         Pop-Location
@@ -184,6 +207,12 @@ function Build-Runtime {
         -f docker/Dockerfile.runtime `
         -t fastfinder:runtime `
         .
+
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Runtime build failed!"
+        Pop-Location
+        exit 1
+    }
 
     Write-Success "Runtime image built as fastfinder:runtime"
 

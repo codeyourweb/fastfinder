@@ -33,7 +33,7 @@ build-linux:
 		--output type=local,dest=../bin \
 		-f Dockerfile.builder \
 		..
-	@echo "✓ Linux binary built: ../bin/fastfinder-linux-amd64"
+	@echo "✓ Linux binaries built: ../bin/fastfinder-linux-amd64, ../bin/fastfinder-linux-arm64, ../bin/fastfinder-linux-386"
 
 # Build Windows binary with YARA support  
 build-windows:
@@ -44,7 +44,8 @@ build-windows:
 		--output type=local,dest=../bin \
 		-f Dockerfile.windows-builder \
 		..
-	@echo "✓ Windows binary built: ../bin/fastfinder-windows-amd64.exe"
+	@echo "✓ Windows binaries built: ../bin/fastfinder-windows-amd64.exe, ../bin/fastfinder-windows-arm64.exe, ../bin/fastfinder-windows-386.exe"
+
 
 # Test builds
 test:

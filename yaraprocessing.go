@@ -234,7 +234,7 @@ func FileAnalyzeYaraMatch(path string, rules *yara.Rules, maxFileSizeScan int, c
 	}
 
 	// cancel analysis if file size is greater than 2Gb
-	if len(content) > 1024*1024*2048 {
+	if int64(len(content)) > 1024*1024*2048 {
 		LogMessage(LOG_ERROR, fmt.Sprintf("File size is greater than %dMb, skipping", maxFileSizeScan), path)
 		return false
 	}
