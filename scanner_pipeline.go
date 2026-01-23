@@ -185,18 +185,13 @@ func (sp *ScannerPipeline) scanFiles(
 
 	for filePath := range sp.fileChan {
 		// Check path patterns first if they exist
+		pathMatches := false
 		if len(pathPatterns) > 0 {
-			pathMatches := false
 			for _, pattern := range pathPatterns {
 				if match, _ := pattern.MatchString(filePath); match {
 					pathMatches = true
 					break
 				}
-			}
-
-			// If content depends on path match and path didn't match, skip
-			if contentDependsOnPath && !pathMatches {
-				continue
 			}
 
 			// If content doesn't depend on path match, send path match
@@ -206,8 +201,13 @@ func (sp *ScannerPipeline) scanFiles(
 			}
 		}
 
+		effectivePatterns := patterns
+		if contentDependsOnPath && len(pathPatterns) > 0 && !pathMatches {
+			effectivePatterns = []string{}
+		}
+
 		// Scan file content if criteria exist
-		if len(patterns) > 0 || len(hashList) > 0 || (rules != nil && len(rules.GetRules()) > 0) {
+		if len(effectivePatterns) > 0 || len(hashList) > 0 || (rules != nil && len(rules.GetRules()) > 0) {
 			b, err := os.ReadFile(filePath)
 			if err != nil {
 				LogMessage(LOG_ERROR, "(ERROR)", "Unable to read file", filePath)
@@ -221,7 +221,7 @@ func (sp *ScannerPipeline) scanFiles(
 			}
 
 			// Check checksum and grep patterns
-			for _, m := range CheckFileChecksumAndContent(filePath, b, hashList, patterns) {
+			for _, m := range CheckFileChecksumAndContent(filePath, b, hashList, effectivePatterns) {
 				LogMessage(LOG_ALERT, "(ALERT)", "File content match on:", filePath)
 				sp.matchesChan <- m
 			}

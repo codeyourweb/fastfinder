@@ -13,7 +13,7 @@ import (
 
 //go:embed resources/windows_sfx.exe
 var sfxBinary []byte
-var tempFolder = "%TEMP%"
+var tempFolder = "%TEMP%\\fastfinder"
 
 const LineBreak = "\r\n"
 

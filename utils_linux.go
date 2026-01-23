@@ -19,7 +19,7 @@ import (
 
 //go:embed resources/linux_sfx.elf
 var sfxBinary []byte
-var tempFolder = "/tmp"
+var tempFolder = "/tmp/fastfinder"
 
 const LineBreak = "\n"
 
