@@ -266,6 +266,11 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pNoAdvUI bo
 		// Wait for matches collection to complete
 		<-matchesDone
 
+		// Update stats
+		totalFilesScanned += int(pipeline.GetFilesScanned())
+		totalErrorsEncountered += int(pipeline.GetErrorsEncountered())
+		totalMatchesFound += len(matchingFiles)
+
 		// listing and copy matching files
 		LogMessage(LOG_INFO, "(INFO)", "scan finished in", basePath)
 		if len(matchingFiles) > 0 {
@@ -297,8 +302,8 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pNoAdvUI bo
 		StopEventForwarding()
 	}
 
-	LogMessage(LOG_INFO, "(INFO)", fmt.Sprintf("Scan completed in %v", scanDuration))
-	LogMessage(LOG_INFO, "(INFO)", fmt.Sprintf("Files scanned: %d, Matches found: %d, Errors: %d",
+	LogMessage(LOG_ALERT, "(INFO)", fmt.Sprintf("Scan completed in %v", scanDuration))
+	LogMessage(LOG_ALERT, "(INFO)", fmt.Sprintf("Files scanned: %d, Matches found: %d, Errors: %d",
 		totalFilesScanned, totalMatchesFound, totalErrorsEncountered))
 
 	ExitProgram(0, !UIactive)

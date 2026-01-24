@@ -68,7 +68,6 @@ func FindInFilesContent(files *[]string, patterns []string, rules *yara.Rules, h
 		// handle file content and checksum match
 		for _, m := range CheckFileChecksumAndContent(path, b, hashList, patterns) {
 			if !Contains(matchingFiles, m) {
-				LogMessage(LOG_ALERT, "(ALERT)", "File content match on:", path)
 				matchingFiles = append(matchingFiles, m)
 			}
 		}
@@ -117,7 +116,6 @@ func FindInFilesContent(files *[]string, patterns []string, rules *yara.Rules, h
 				// handle file content and checksum match for each file in the archive
 				for _, m := range CheckFileChecksumAndContent(path, body, hashList, patterns) {
 					if !Contains(matchingFiles, m) {
-						LogMessage(LOG_ALERT, "(ALERT)", "File content match on:", path)
 						matchingFiles = append(matchingFiles, m)
 					}
 				}
@@ -186,10 +184,16 @@ func checkForChecksum(path string, content []byte, hashList []string) (matchingF
 // checkForStringPattern check if file content matches any specified pattern
 func checkForStringPattern(path string, content []byte, patterns []string) (matchingFiles []string) {
 	LogMessage(LOG_VERBOSE, "(SCAN)", "Checking grep patterns in", path)
+	contentStr := string(content)
+	lines := strings.Split(contentStr, "\n")
+
 	for _, expression := range patterns {
-		if strings.Contains(string(content), expression) {
-			LogMessage(LOG_ALERT, "(ALERT)", "Grep match:", expression, "in", path)
-			matchingFiles = append(matchingFiles, path)
+		for i, line := range lines {
+			if strings.Contains(line, expression) {
+				LogMessage(LOG_ALERT, "(ALERT)", "Grep match:", expression, "in", path, "at line", fmt.Sprintf("%d:", i+1), strings.TrimSpace(line))
+				matchingFiles = append(matchingFiles, path)
+				break
+			}
 		}
 	}
 	return matchingFiles

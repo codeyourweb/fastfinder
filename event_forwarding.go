@@ -24,6 +24,7 @@ type EventForwarder struct {
 	currentFilePath string
 	lastRotation    time.Time
 	fileMutex       sync.Mutex
+	wg              sync.WaitGroup
 }
 
 // FastFinderEvent represents an event to be forwarded
@@ -133,6 +134,7 @@ func InitializeEventForwarding(config *ForwardingConfig) error {
 		httpClient:  httpClient,
 	}
 
+	eventForwarder.wg.Add(1)
 	// Start the forwarding goroutine
 	go eventForwarder.forwardingLoop()
 
@@ -243,6 +245,7 @@ func (ef *EventForwarder) shouldForwardEvent(eventType, severity string) bool {
 
 // forwardingLoop runs the periodic event forwarding
 func (ef *EventForwarder) forwardingLoop() {
+	defer ef.wg.Done()
 	ticker := time.NewTicker(time.Duration(ef.config.FlushTime) * time.Second)
 	defer ticker.Stop()
 
@@ -466,11 +469,14 @@ func (ef *EventForwarder) cleanOldFiles() {
 // StopEventForwarding stops the event forwarding system
 func StopEventForwarding() {
 	if eventForwarder != nil {
+		close(eventForwarder.stopChannel)
+		eventForwarder.wg.Wait()
+
 		// Close current file if open
 		if eventForwarder.currentFile != nil {
 			eventForwarder.currentFile.Close()
+			eventForwarder.currentFile = nil
 		}
-		close(eventForwarder.stopChannel)
 		eventForwarder = nil
 	}
 }

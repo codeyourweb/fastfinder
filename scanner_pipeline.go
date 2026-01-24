@@ -13,12 +13,15 @@ import (
 
 // ScannerPipeline manages concurrent file enumeration and scanning
 type ScannerPipeline struct {
-	fileChan        chan string
-	matchesChan     chan string
-	errChan         chan error
-	wg              sync.WaitGroup
-	enumerationDone chan bool
-	scanningDone    chan bool
+	fileChan          chan string
+	matchesChan       chan string
+	errChan           chan error
+	wg                sync.WaitGroup
+	enumerationDone   chan bool
+	scanningDone      chan bool
+	filesScanned      int64
+	errorsEncountered int64
+	statsMutex        sync.Mutex
 }
 
 // NewScannerPipeline creates a new scanner pipeline
@@ -38,7 +41,7 @@ func (sp *ScannerPipeline) StartEnumeration(paths []string, excludedPaths []stri
 	go func() {
 		defer sp.wg.Done()
 		for _, path := range paths {
-			enumerateFilesStreaming(path, excludedPaths, sp.fileChan)
+			sp.enumerateFiles(path, excludedPaths)
 		}
 		close(sp.fileChan)
 		sp.enumerationDone <- true
@@ -83,6 +86,20 @@ func (sp *ScannerPipeline) GetErrors() <-chan error {
 	return sp.errChan
 }
 
+// GetFilesScanned returns the number of files scanned
+func (sp *ScannerPipeline) GetFilesScanned() int64 {
+	sp.statsMutex.Lock()
+	defer sp.statsMutex.Unlock()
+	return sp.filesScanned
+}
+
+// GetErrorsEncountered returns the number of errors encountered
+func (sp *ScannerPipeline) GetErrorsEncountered() int64 {
+	sp.statsMutex.Lock()
+	defer sp.statsMutex.Unlock()
+	return sp.errorsEncountered
+}
+
 // Wait waits for enumeration to complete
 func (sp *ScannerPipeline) WaitEnumeration() {
 	<-sp.enumerationDone
@@ -100,37 +117,44 @@ func (sp *ScannerPipeline) WaitAll() {
 	close(sp.errChan)
 }
 
-// enumerateFilesStreaming enumerates files and sends them through a channel using parallel workers
-func enumerateFilesStreaming(path string, excludedPaths []string, fileChan chan string) {
+// enumerateFiles enumerates files and sends them through a channel using parallel workers
+func (sp *ScannerPipeline) enumerateFiles(path string, excludedPaths []string) {
 	const numWorkers = 8 // Number of parallel workers for directory enumeration
 
 	dirQueue := make(chan string, 1000) // Queue of directories to process
-	var wg sync.WaitGroup
+	var workerWg sync.WaitGroup         // WaitGroup for workers
+	var taskWg sync.WaitGroup           // WaitGroup for scanning tasks
 	var dirCountMutex sync.Mutex
 	dirCount := int64(0)
 
 	// Launch worker goroutines
 	for i := 0; i < numWorkers; i++ {
-		wg.Add(1)
+		workerWg.Add(1)
 		go func() {
-			defer wg.Done()
+			defer workerWg.Done()
 			for dirPath := range dirQueue {
-				enumerateDirectoryWorker(dirPath, excludedPaths, fileChan, dirQueue, &wg, &dirCount, &dirCountMutex)
+				sp.enumerateDirectoryWorker(dirPath, excludedPaths, dirQueue, &taskWg, &dirCount, &dirCountMutex)
+				taskWg.Done() // Mark this directory task as completed
 			}
 		}()
 	}
 
 	// Queue the root directory
-	wg.Add(1)
+	taskWg.Add(1)
 	dirQueue <- path
 
+	// Watcher routine to close queue when all tasks are done
+	go func() {
+		taskWg.Wait()
+		close(dirQueue)
+	}()
+
 	// Wait for all workers to finish
-	wg.Wait()
-	close(dirQueue)
+	workerWg.Wait()
 }
 
 // enumerateDirectoryWorker processes a single directory and queues its subdirectories
-func enumerateDirectoryWorker(dirPath string, excludedPaths []string, fileChan chan string, dirQueue chan string, wg *sync.WaitGroup, dirCount *int64, mutex *sync.Mutex) {
+func (sp *ScannerPipeline) enumerateDirectoryWorker(dirPath string, excludedPaths []string, dirQueue chan string, wg *sync.WaitGroup, dirCount *int64, mutex *sync.Mutex) {
 	// Update directory count
 	mutex.Lock()
 	*dirCount++
@@ -142,6 +166,9 @@ func enumerateDirectoryWorker(dirPath string, excludedPaths []string, fileChan c
 	entries, err := os.ReadDir(dirPath)
 	if err != nil {
 		LogMessage(LOG_ERROR, "(ERROR)", err)
+		sp.statsMutex.Lock()
+		sp.errorsEncountered++
+		sp.statsMutex.Unlock()
 		return
 	}
 
@@ -165,10 +192,12 @@ func enumerateDirectoryWorker(dirPath string, excludedPaths []string, fileChan c
 		if entry.IsDir() {
 			// Queue subdirectory for processing by a worker
 			wg.Add(1)
-			dirQueue <- fullPath
+			go func(p string) {
+				dirQueue <- p
+			}(fullPath)
 		} else {
 			// Send file to the channel
-			fileChan <- fullPath
+			sp.fileChan <- fullPath
 		}
 	}
 }
@@ -184,6 +213,10 @@ func (sp *ScannerPipeline) scanFiles(
 	contentDependsOnPath bool) {
 
 	for filePath := range sp.fileChan {
+		sp.statsMutex.Lock()
+		sp.filesScanned++
+		sp.statsMutex.Unlock()
+
 		// Check path patterns first if they exist
 		pathMatches := false
 		if len(pathPatterns) > 0 {
@@ -211,6 +244,9 @@ func (sp *ScannerPipeline) scanFiles(
 			b, err := os.ReadFile(filePath)
 			if err != nil {
 				LogMessage(LOG_ERROR, "(ERROR)", "Unable to read file", filePath)
+				sp.statsMutex.Lock()
+				sp.errorsEncountered++
+				sp.statsMutex.Unlock()
 				continue
 			}
 
@@ -222,7 +258,6 @@ func (sp *ScannerPipeline) scanFiles(
 
 			// Check checksum and grep patterns
 			for _, m := range CheckFileChecksumAndContent(filePath, b, hashList, effectivePatterns) {
-				LogMessage(LOG_ALERT, "(ALERT)", "File content match on:", filePath)
 				sp.matchesChan <- m
 			}
 
@@ -232,6 +267,9 @@ func (sp *ScannerPipeline) scanFiles(
 				yaraResult, err := PerformYaraScan(&b, rules)
 				if err != nil {
 					LogMessage(LOG_ERROR, "(ERROR)", "Error performing yara scan on", filePath, err)
+					sp.statsMutex.Lock()
+					sp.errorsEncountered++
+					sp.statsMutex.Unlock()
 					continue
 				}
 
@@ -256,6 +294,10 @@ func (sp *ScannerPipeline) scanFiles(
 // scanFilesPathOnly scans only path patterns
 func (sp *ScannerPipeline) scanFilesPathOnly(pathPatterns []*regexp2.Regexp) {
 	for filePath := range sp.fileChan {
+		sp.statsMutex.Lock()
+		sp.filesScanned++
+		sp.statsMutex.Unlock()
+
 		for _, pattern := range pathPatterns {
 			if match, _ := pattern.MatchString(filePath); match {
 				LogMessage(LOG_ALERT, "(ALERT)", "File path match on:", filePath)
