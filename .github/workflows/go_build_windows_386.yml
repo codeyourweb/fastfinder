@@ -12,7 +12,7 @@ jobs:
       - name: Install MSYS2
         uses: msys2/setup-msys2@v2
         with:
-          msystem: MINGW64
+          msystem: MINGW32
           path-type: inherit
           update: true
           install: >-
@@ -35,9 +35,12 @@ jobs:
              cd /tmp && unzip yara.zip
              cd /tmp/yara-4.5.5
              ./bootstrap.sh
-             ./configure --prefix=/mingw32 --host=i686-w64-mingw32 --disable-crypto --enable-static --disable-shared
+             ./configure --prefix=/mingw32 --host=i686-w64-mingw32
              make -j$(nproc)
              make install
+             # Verify yara.pc installation
+             ls -la /mingw32/lib/pkgconfig/yara.pc
+             pkg-config --modversion yara
 
       - name: Set up Go
         uses: actions/setup-go@v2
@@ -48,25 +51,15 @@ jobs:
       - name: Build FastFinder (i386)
         run: |
           # Use MinGW 32-bit environment
-          export PATH="/mingw32/bin:$PATH"
-          export PKG_CONFIG_PATH="/mingw32/lib/pkgconfig"
-          
-          # Convert paths to mixed mode (Windows style with forward slashes) for CGO
-          _INCLUDE_PATH=$(cygpath -m /mingw32/include)
-          _LIB_PATH=$(cygpath -m /mingw32/lib)
-          
-          export CGO_CFLAGS="-I${_INCLUDE_PATH}"
+          export PKG_CONFIG_PATH="/mingw32/lib/pkgconfig:$PKG_CONFIG_PATH"
+          export CGO_CFLAGS="-I/mingw32/include"
           
           export CGO_ENABLED=1
           export GOOS=windows
           export GOARCH=386
           
-          # Check if library exists
-          ls -l /mingw32/lib/libyara.a
-          
-          # Force static linking for MinGW-w64 with full paths
-          export CGO_LDFLAGS="-L${_LIB_PATH} -lyara -lws2_32 -limagehlp -static"
-          
-          go build -v -ldflags "-s -w -extldflags '-static'" -tags yara_static,yara_no_pkg_config -o fastfinder-386.exe .
+          # Rely on pkg-config for CGO_LDFLAGS like x64 build
+          # -s -w for stripping, -extldflags "-static" for static linking
+          go build -v -ldflags "-s -w -extldflags '-static'" -tags yara_static -o fastfinder-386.exe .
           ls -l fastfinder-386.exe
           ./fastfinder-386.exe -h
