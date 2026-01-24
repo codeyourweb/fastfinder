@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -108,14 +109,26 @@ func TestConfigurationMissingRequired(t *testing.T) {
 
 // TestConfigurationEmpty tests handling of empty configuration
 func TestConfigurationEmpty(t *testing.T) {
+	if os.Getenv("TEST_CONFIGURATION_EMPTY_SUBPROCESS") == "1" {
+		tmpFile := os.Getenv("TEST_CONFIGURATION_EMPTY_FILE")
+		var config Configuration
+		config.getConfiguration(tmpFile)
+		return
+	}
+
 	tmpFile := filepath.Join(t.TempDir(), "empty_config.yml")
 	os.WriteFile(tmpFile, []byte(""), 0644)
 
-	var config Configuration
-	config.getConfiguration(tmpFile)
+	cmd := exec.Command(os.Args[0], "-test.run=TestConfigurationEmpty")
+	cmd.Env = append(os.Environ(), "TEST_CONFIGURATION_EMPTY_SUBPROCESS=1", "TEST_CONFIGURATION_EMPTY_FILE="+tmpFile)
+	err := cmd.Run()
 
-	// Verify no panic occurred
-	t.Log("Empty configuration handled gracefully")
+	// We expect an exit error here because LogFatal calls os.Exit(1)
+	if e, ok := err.(*exec.ExitError); ok && !e.Success() {
+		t.Log("Empty configuration triggered exit as expected")
+		return
+	}
+	t.Fatalf("process ran with err %v, want exit status 1", err)
 }
 
 // TestConfigurationYARAWithRC4 tests YARA section with RC4 encryption

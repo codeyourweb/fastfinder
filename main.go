@@ -23,7 +23,7 @@ import (
 	"github.com/hillu/go-yara/v4"
 )
 
-const FASTFINDER_VERSION = "3.0.0"
+const FASTFINDER_VERSION = "3.6.0"
 const YARA_VERSION = "4.5.5"
 const BUILDER_RC4_KEY = ">Õ°ªKb{¡§ÌB$lMÕ±9l.tòÑé¦Ø¿"
 
@@ -33,7 +33,7 @@ func main() {
 	pConfigPath := parser.String("c", "configuration", &argparse.Options{Required: false, Default: "", Help: "Fastfind configuration file"})
 	pSfxPath := parser.String("b", "build", &argparse.Options{Required: false, Help: "Output a standalone package with configuration and rules in a single binary"})
 	pSilentMode := parser.Flag("s", "silent", &argparse.Options{Required: false, Help: "Silent mode - run without any visible window or console"})
-	pLogVerbosity := parser.Int("v", "verbosity", &argparse.Options{Required: false, Default: 3, Help: "File log verbosity \n\t\t\t\t | 1: Only alerts\n\t\t\t\t | 2: Alerts and warnings\n\t\t\t\t | 3: Alerts,warnings and errors\n\t\t\t\t | 4: Alerts,warnings,errors and I/O operations\n\t\t\t\t | 5: Full verbosity)\n\t\t\t\t"})
+	pLogVerbosity := parser.Int("v", "verbosity", &argparse.Options{Required: false, Default: 4, Help: "File log verbosity \n\t\t\t\t | 1: Only alerts\n\t\t\t\t | 2: Alerts and warnings\n\t\t\t\t | 3: Alerts,warnings and errors\n\t\t\t\t | 4: Alerts,warnings,errors and I/O operations\n\t\t\t\t | 5: Full verbosity)\n\t\t\t\t"})
 	pTriage := parser.Flag("t", "triage", &argparse.Options{Required: false, Default: false, Help: "Triage mode (infinite run - scan every new file in the input path directories)"})
 	pRootPath := parser.String("r", "root", &argparse.Options{Required: false, Default: "", Help: "Scan root path (override drive enumeration to scan specific directory)"})
 
@@ -150,7 +150,7 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pNoAdvUI bo
 	}
 
 	// Memory Scan
-	if config.Options.ScanMemory {
+	if config.Options.FindInMemory {
 		ScanMemory(config, rules)
 	}
 
@@ -266,6 +266,11 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pNoAdvUI bo
 		// Wait for matches collection to complete
 		<-matchesDone
 
+		// Update stats
+		totalFilesScanned += int(pipeline.GetFilesScanned())
+		totalErrorsEncountered += int(pipeline.GetErrorsEncountered())
+		totalMatchesFound += len(matchingFiles)
+
 		// listing and copy matching files
 		LogMessage(LOG_INFO, "(INFO)", "scan finished in", basePath)
 		if len(matchingFiles) > 0 {
@@ -297,8 +302,8 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pNoAdvUI bo
 		StopEventForwarding()
 	}
 
-	LogMessage(LOG_INFO, "(INFO)", fmt.Sprintf("Scan completed in %v", scanDuration))
-	LogMessage(LOG_INFO, "(INFO)", fmt.Sprintf("Files scanned: %d, Matches found: %d, Errors: %d",
+	LogMessage(LOG_ALERT, "(INFO)", fmt.Sprintf("Scan completed in %v", scanDuration))
+	LogMessage(LOG_ALERT, "(INFO)", fmt.Sprintf("Files scanned: %d, Matches found: %d, Errors: %d",
 		totalFilesScanned, totalMatchesFound, totalErrorsEncountered))
 
 	ExitProgram(0, !UIactive)

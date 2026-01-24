@@ -13,12 +13,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type ConfigurationObject struct {
-	Line int
-
-	Configuration
-}
-
 type Configuration struct {
 	Input              Input              `yaml:"input"`
 	Options            Options            `yaml:"options"`
@@ -45,7 +39,7 @@ type Options struct {
 	FindInRemovableDrives          bool `yaml:"findInRemovableDrives"`
 	FindInNetworkDrives            bool `yaml:"findInNetworkDrives"`
 	FindInCDRomDrives              bool `yaml:"findInCDRomDrives"`
-	ScanMemory                     bool `yaml:"scanMemory"`
+	FindInMemory                   bool `yaml:"findInMemory"`
 }
 
 type Output struct {
@@ -58,17 +52,6 @@ type AdvancedParameters struct {
 	YaraRC4Key                       string `yaml:"yaraRC4Key"`
 	MaxScanFilesize                  int    `yaml:"maxScanFilesize"`
 	CleanMemoryIfFileGreaterThanSize int    `yaml:"cleanMemoryIfFileGreaterThanSize"`
-}
-
-func (i *ConfigurationObject) UnmarshalYAML(value *yaml.Node) error {
-	err := value.Decode(&i.Configuration)
-	if err != nil {
-		return err
-	}
-
-	i.Line = value.Line
-
-	return nil
 }
 
 func (c *Configuration) getConfiguration(configFile string) *Configuration {
@@ -107,14 +90,13 @@ func (c *Configuration) getConfiguration(configFile string) *Configuration {
 		yamlContent = RC4Cipher(yamlContent, BUILDER_RC4_KEY)
 	}
 
-	var o ConfigurationObject
-	err = yaml.Unmarshal(yamlContent, &o)
+	decoder := yaml.NewDecoder(bytes.NewReader(yamlContent))
+	decoder.KnownFields(true)
+	err = decoder.Decode(c)
 
 	if err != nil {
 		LogFatal(fmt.Sprintf("%s - %v", configFile, err))
 	}
-
-	*c = o.Configuration
 
 	// check for specific user configuration params inconsistencies
 	if len(c.Input.Path) == 0 || (len(c.Input.Content.Grep) == 0 && len(c.Input.Content.Yara) == 0 && len(c.Input.Content.Checksum) == 0) {
@@ -203,5 +185,6 @@ func (c *Configuration) getConfiguration(configFile string) *Configuration {
 		}
 	}
 
+	LogMessage(LOG_INFO, "Configuration loaded")
 	return c
 }

@@ -29,7 +29,7 @@ options:
     findInRemovableDrives: false
     findInNetworkDrives: false
     findInCDRomDrives: false
-    scanMemory: false
+    findInMemory: false
 output:
     copyMatchingFiles: false
     base64Files: false

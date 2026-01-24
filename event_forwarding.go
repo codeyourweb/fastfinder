@@ -24,6 +24,7 @@ type EventForwarder struct {
 	currentFilePath string
 	lastRotation    time.Time
 	fileMutex       sync.Mutex
+	wg              sync.WaitGroup
 }
 
 // FastFinderEvent represents an event to be forwarded
@@ -133,6 +134,7 @@ func InitializeEventForwarding(config *ForwardingConfig) error {
 		httpClient:  httpClient,
 	}
 
+	eventForwarder.wg.Add(1)
 	// Start the forwarding goroutine
 	go eventForwarder.forwardingLoop()
 
@@ -190,6 +192,30 @@ func ForwardAlertEvent(ruleName, filePath string, fileSize int64, fileHash strin
 	ForwardEvent("alert", "high", fmt.Sprintf("YARA rule match: %s in %s", ruleName, filePath), metadata)
 }
 
+// ForwardGrepMatchEvent forwards a Grep match event
+func ForwardGrepMatchEvent(pattern, filePath string, fileSize int64, metadata map[string]string) {
+	if metadata == nil {
+		metadata = make(map[string]string)
+	}
+	metadata["grep_pattern"] = pattern
+	metadata["file_path"] = filePath
+	metadata["file_size"] = fmt.Sprintf("%d", fileSize)
+
+	ForwardEvent("alert", "high", fmt.Sprintf("Grep match: %s in %s", pattern, filePath), metadata)
+}
+
+// ForwardChecksumMatchEvent forwards a Checksum match event
+func ForwardChecksumMatchEvent(checksum, filePath string, fileSize int64, metadata map[string]string) {
+	if metadata == nil {
+		metadata = make(map[string]string)
+	}
+	metadata["checksum"] = checksum
+	metadata["file_path"] = filePath
+	metadata["file_size"] = fmt.Sprintf("%d", fileSize)
+
+	ForwardEvent("alert", "high", fmt.Sprintf("Checksum match: %s in %s", checksum, filePath), metadata)
+}
+
 // ForwardScanCompleteEvent forwards scan completion statistics
 func ForwardScanCompleteEvent(filesScanned, matchesFound, errorsEncountered int, duration time.Duration) {
 	if eventForwarder == nil {
@@ -243,6 +269,7 @@ func (ef *EventForwarder) shouldForwardEvent(eventType, severity string) bool {
 
 // forwardingLoop runs the periodic event forwarding
 func (ef *EventForwarder) forwardingLoop() {
+	defer ef.wg.Done()
 	ticker := time.NewTicker(time.Duration(ef.config.FlushTime) * time.Second)
 	defer ticker.Stop()
 
@@ -466,11 +493,14 @@ func (ef *EventForwarder) cleanOldFiles() {
 // StopEventForwarding stops the event forwarding system
 func StopEventForwarding() {
 	if eventForwarder != nil {
+		close(eventForwarder.stopChannel)
+		eventForwarder.wg.Wait()
+
 		// Close current file if open
 		if eventForwarder.currentFile != nil {
 			eventForwarder.currentFile.Close()
+			eventForwarder.currentFile = nil
 		}
-		close(eventForwarder.stopChannel)
 		eventForwarder = nil
 	}
 }

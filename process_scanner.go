@@ -22,15 +22,22 @@ func ScanMemory(config Configuration, rules *yara.Rules) {
 	procs := ListProcesses()
 	LogMessage(LOG_INFO, "(INFO)", fmt.Sprintf("Found %d running processes", len(procs)))
 
+	ScanProcesses(procs, config, rules)
+
+	LogMessage(LOG_INFO, "(INFO)", "Memory scan finished")
+}
+
+// ScanProcesses scans a list of processes for patterns and YARA rules
+func ScanProcesses(procs []ProcessInformation, config Configuration, rules *yara.Rules) int {
+	totalMatches := 0
 	for _, proc := range procs {
 		LogMessage(LOG_VERBOSE, "(MEMORY)", "Scanning process:", proc.ProcessName, fmt.Sprintf("(PID: %d)", proc.PID))
 
 		// Check memory content with Grep
 		if len(config.Input.Content.Grep) > 0 {
+			// checkForStringPattern already handles logging and alerting
 			matches := checkForStringPattern(fmt.Sprintf("MEMORY:%s:%d", proc.ProcessName, proc.PID), proc.MemoryDump, config.Input.Content.Grep)
-			for _, m := range matches {
-				LogMessage(LOG_ALERT, "(ALERT)", "Memory Grep match:", m)
-			}
+			totalMatches += len(matches)
 		}
 
 		// Check memory content with YARA
@@ -38,6 +45,8 @@ func ScanMemory(config Configuration, rules *yara.Rules) {
 			matchs, err := PerformYaraScan(&proc.MemoryDump, rules)
 			if err != nil {
 				LogMessage(LOG_ERROR, "(ERROR)", "Memory YARA scan failed for", proc.ProcessName, err)
+			} else {
+				totalMatches += len(matchs)
 			}
 
 			for i := 0; i < len(matchs); i++ {
@@ -61,6 +70,5 @@ func ScanMemory(config Configuration, rules *yara.Rules) {
 		proc.MemoryDump = nil
 		debug.FreeOSMemory()
 	}
-
-	LogMessage(LOG_INFO, "(INFO)", "Memory scan finished")
+	return totalMatches
 }
