@@ -192,6 +192,30 @@ func ForwardAlertEvent(ruleName, filePath string, fileSize int64, fileHash strin
 	ForwardEvent("alert", "high", fmt.Sprintf("YARA rule match: %s in %s", ruleName, filePath), metadata)
 }
 
+// ForwardGrepMatchEvent forwards a Grep match event
+func ForwardGrepMatchEvent(pattern, filePath string, fileSize int64, metadata map[string]string) {
+	if metadata == nil {
+		metadata = make(map[string]string)
+	}
+	metadata["grep_pattern"] = pattern
+	metadata["file_path"] = filePath
+	metadata["file_size"] = fmt.Sprintf("%d", fileSize)
+
+	ForwardEvent("alert", "high", fmt.Sprintf("Grep match: %s in %s", pattern, filePath), metadata)
+}
+
+// ForwardChecksumMatchEvent forwards a Checksum match event
+func ForwardChecksumMatchEvent(checksum, filePath string, fileSize int64, metadata map[string]string) {
+	if metadata == nil {
+		metadata = make(map[string]string)
+	}
+	metadata["checksum"] = checksum
+	metadata["file_path"] = filePath
+	metadata["file_size"] = fmt.Sprintf("%d", fileSize)
+
+	ForwardEvent("alert", "high", fmt.Sprintf("Checksum match: %s in %s", checksum, filePath), metadata)
+}
+
 // ForwardScanCompleteEvent forwards scan completion statistics
 func ForwardScanCompleteEvent(filesScanned, matchesFound, errorsEncountered int, duration time.Duration) {
 	if eventForwarder == nil {

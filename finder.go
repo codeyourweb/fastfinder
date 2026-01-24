@@ -174,6 +174,7 @@ func checkForChecksum(path string, content []byte, hashList []string) (matchingF
 	for _, c := range hashs {
 		if Contains(hashList, c) && !Contains(matchingFiles, path) {
 			LogMessage(LOG_ALERT, "(ALERT)", "Checksum match:", c, "in", path)
+			ForwardChecksumMatchEvent(c, path, int64(len(content)), nil)
 			matchingFiles = append(matchingFiles, path)
 		}
 	}
@@ -190,7 +191,13 @@ func checkForStringPattern(path string, content []byte, patterns []string) (matc
 	for _, expression := range patterns {
 		for i, line := range lines {
 			if strings.Contains(line, expression) {
-				LogMessage(LOG_ALERT, "(ALERT)", "Grep match:", expression, "in", path, "at line", fmt.Sprintf("%d:", i+1), strings.TrimSpace(line))
+				LogMessage(LOG_ALERT, "(ALERT)", "Grep match:", expression, "in", path, "at line", fmt.Sprintf("%d", i+1))
+
+				metadata := map[string]string{
+					"line_number": fmt.Sprintf("%d", i+1),
+				}
+				ForwardGrepMatchEvent(expression, path, int64(len(content)), metadata)
+
 				matchingFiles = append(matchingFiles, path)
 				break
 			}

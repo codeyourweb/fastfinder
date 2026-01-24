@@ -150,7 +150,7 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pNoAdvUI bo
 	}
 
 	// Memory Scan
-	if config.Options.ScanMemory {
+	if config.Options.FindInMemory {
 		ScanMemory(config, rules)
 	}
 

@@ -39,7 +39,7 @@ type Options struct {
 	FindInRemovableDrives          bool `yaml:"findInRemovableDrives"`
 	FindInNetworkDrives            bool `yaml:"findInNetworkDrives"`
 	FindInCDRomDrives              bool `yaml:"findInCDRomDrives"`
-	ScanMemory                     bool `yaml:"scanMemory"`
+	FindInMemory                   bool `yaml:"findInMemory"`
 }
 
 type Output struct {

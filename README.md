@@ -148,6 +148,7 @@ options:
     findInRemovableDrives: true # enumerate removable drive content 
     findInNetworkDrives: true # enumerate network drive content
     findInCDRomDrives: true # enumerate physical CD-ROM and mounted iso / vhd...
+    findInMemory: true # check for results in processes memory
 output:
     copyMatchingFiles: true # create a copy of every matching file
     base64Files: true # base64 matched content before copy
