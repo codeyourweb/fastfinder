@@ -110,7 +110,7 @@ output:
 	if runtime.GOOS == "windows" {
 		_ = exec.Command("taskkill", "/F", "/IM", "fastfinder.exe").Run()
 	} else {
-		_ = exec.Command("pkill", "fastfinder").Run()
+		_ = exec.Command("pkill", "-x", "fastfinder").Run()
 	}
 	// Give OS time to release handle
 	time.Sleep(500 * time.Millisecond)
