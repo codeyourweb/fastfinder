@@ -107,15 +107,6 @@ output:
 	}
 	t.Log("SFX created.")
 
-	// Cleanup previous potential collisions in system temp (since SFX extracts there)
-	// The SFX stub is configured (in utils_windows.go/utils_linux.go) to extract to %TEMP% or /tmp.
-	// We try to remove 'fastfinder' or 'fastfinder.exe' from there to avoid "Cannot create output files" if locked.
-	// Force kill any lingering fastfinder process that might hold the file lock
-	if runtime.GOOS == "windows" {
-		_ = exec.Command("taskkill", "/F", "/IM", "fastfinder.exe").Run()
-	} else {
-		_ = exec.Command("pkill", "-x", "fastfinder").Run()
-	}
 	// Give OS time to release handle
 	time.Sleep(500 * time.Millisecond)
 

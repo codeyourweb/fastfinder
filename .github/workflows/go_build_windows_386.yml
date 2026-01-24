@@ -35,7 +35,7 @@ jobs:
              cd /tmp && unzip yara.zip
              cd /tmp/yara-4.5.5
              ./bootstrap.sh
-             ./configure --prefix=/mingw32 --host=i686-w64-mingw32
+             ./configure --prefix=/mingw32 --host=i686-w64-mingw32 --disable-crypto --enable-static --disable-shared
              make -j$(nproc)
              make install
 
@@ -56,7 +56,7 @@ jobs:
           export GOOS=windows
           export GOARCH=386
           # Force static linking for MinGW-w64
-          export CGO_LDFLAGS="-L/mingw32/lib -lyara -lssl -lcrypto -lws2_32 -limagehlp -static"
+          export CGO_LDFLAGS="-L/mingw32/lib -lyara -lws2_32 -limagehlp -static"
           
           go build -v -ldflags "-s -w -extldflags '-static'" -tags yara_static,yara_no_pkg_config -o fastfinder-386.exe .
           ls -l fastfinder-386.exe
