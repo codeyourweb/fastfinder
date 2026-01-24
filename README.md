@@ -103,7 +103,7 @@ fastfinder [OPTIONS]
 |--------|-------------|----------|
 | `-h, --help` | Print help information | |
 | `-c, --configuration <yaml config file>` | Configuration file path | |
-| `-b, --build <output executable>` | Create standalone binary with embedded config | |
+| `-b, --build <output executable>` | Create standalone binary with embedded config (x64 architecture only) | |
 | `-r, --root <Path>` | Scan root path (override drive enumeration) | |
 | `-s, --silent` | Silent mode - run without any visible window or console | |
 | `-v, --verbosity <verbosityLevel>` | Log verbosity level (1-5) | `3` |
@@ -126,7 +126,7 @@ fastfinder [OPTIONS]
 # Continuous monitoring mode
 ./fastfinder -c config.yaml -t
 
-# Create standalone executable
+# Create standalone executable (x64 architecture only)
 ./fastfinder -c config.yaml -b standalone_scanner.exe
 ```
 

@@ -12,6 +12,10 @@ import (
 )
 
 func TestSFXBuildAndPathResolution(t *testing.T) {
+	if runtime.GOARCH != "amd64" {
+		t.Skip("SFX build is only supported on x64 (amd64) architecture")
+	}
+
 	// Skip if strictly running unit tests without build capabilities or no go compiler
 	if _, err := exec.LookPath("go"); err != nil {
 		t.Skip("go compiler not found, skipping SFX integration test")

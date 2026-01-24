@@ -117,6 +117,10 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pNoAdvUI bo
 
 	// sfx building option
 	if len(pSfxPath) > 0 {
+		if runtime.GOARCH != "amd64" {
+			LogMessage(LOG_ERROR, "(ERROR)", "SFX build is only supported on x64 (amd64) architecture")
+			ExitProgram(1, !UIactive)
+		}
 		BuildSFX(pConfigPath, pSfxPath, pLoglevel, pNoAdvUI)
 		LogMessage(LOG_INFO, "(INFO)", "Fastfinder package generated successfully at", pSfxPath)
 		ExitProgram(0, !UIactive)
