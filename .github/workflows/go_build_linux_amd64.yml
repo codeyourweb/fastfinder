@@ -31,6 +31,7 @@ jobs:
       - name: Run Unit Tests
         run: |
            sudo ldconfig
+           export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH"
            # Test AMD64
            go test ./... -v
            

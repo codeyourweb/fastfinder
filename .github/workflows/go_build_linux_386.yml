@@ -46,6 +46,7 @@ jobs:
            export CC=i686-linux-gnu-gcc
            export CGO_CFLAGS="-I/usr/local/i686/include"
            export CGO_LDFLAGS="-L/usr/local/i686/lib -lyara -static"
+           export PKG_CONFIG_PATH="/usr/local/i686/lib/pkgconfig"
            
            go build -trimpath -tags yara_static -a -ldflags '-s -w -extldflags "-static"' -o fastfinder-386 .
            ls -l fastfinder-386

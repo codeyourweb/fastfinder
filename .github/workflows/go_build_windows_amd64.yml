@@ -27,6 +27,7 @@ jobs:
             make
             unzip
             wget
+            pkg-config
       - name: Install YARA v4.5.5
         run: |
              wget -c https://github.com/VirusTotal/yara/archive/refs/tags/v4.5.5.zip -O /tmp/yara.zip

@@ -49,6 +49,7 @@ jobs:
            export CC=aarch64-linux-gnu-gcc
            export CGO_CFLAGS="-I/usr/local/aarch64/include"
            export CGO_LDFLAGS="-L/usr/local/aarch64/lib -lyara -static"
+           export PKG_CONFIG_PATH="/usr/local/aarch64/lib/pkgconfig"
            
            go build -trimpath -tags yara_static -a -ldflags '-s -w -extldflags "-static"' -o fastfinder-arm64 .
            ls -l fastfinder-arm64

@@ -27,6 +27,7 @@ jobs:
             make
             unzip
             wget
+            pkg-config
 
       - name: Install YARA v4.5.5 (i386)
         run: |

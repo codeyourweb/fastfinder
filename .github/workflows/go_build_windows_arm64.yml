@@ -23,6 +23,7 @@ jobs:
             make
             unzip
             wget
+            pkg-config
 
       - name: Install LLVM-MinGW (for ARM64)
         run: |
