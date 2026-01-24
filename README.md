@@ -102,11 +102,11 @@ fastfinder [OPTIONS]
 | Option | Description | Default |
 |--------|-------------|----------|
 | `-h, --help` | Print help information | |
-| `-c, --configuration` | Configuration file path | |
-| `-b, --build` | Create standalone binary with embedded config | |
-| `-r, --root` | Scan root path (override drive enumeration) | |
+| `-c, --configuration <yaml config file>` | Configuration file path | |
+| `-b, --build <output executable>` | Create standalone binary with embedded config | |
+| `-r, --root <Path>` | Scan root path (override drive enumeration) | |
 | `-s, --silent` | Silent mode - run without any visible window or console | |
-| `-v, --verbosity` | Log verbosity level (1-5) | `3` |
+| `-v, --verbosity <verbosityLevel>` | Log verbosity level (1-5) | `3` |
 | `-t, --triage` | Continuous monitoring mode | `false` |
 
 ### Verbosity Levels
