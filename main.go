@@ -33,7 +33,7 @@ func main() {
 	pConfigPath := parser.String("c", "configuration", &argparse.Options{Required: false, Default: "", Help: "Fastfind configuration file"})
 	pSfxPath := parser.String("b", "build", &argparse.Options{Required: false, Help: "Output a standalone package with configuration and rules in a single binary"})
 	pSilentMode := parser.Flag("s", "silent", &argparse.Options{Required: false, Help: "Silent mode - run without any visible window or console"})
-	pLogVerbosity := parser.Int("v", "verbosity", &argparse.Options{Required: false, Default: 3, Help: "File log verbosity \n\t\t\t\t | 1: Only alerts\n\t\t\t\t | 2: Alerts and warnings\n\t\t\t\t | 3: Alerts,warnings and errors\n\t\t\t\t | 4: Alerts,warnings,errors and I/O operations\n\t\t\t\t | 5: Full verbosity)\n\t\t\t\t"})
+	pLogVerbosity := parser.Int("v", "verbosity", &argparse.Options{Required: false, Default: 4, Help: "File log verbosity \n\t\t\t\t | 1: Only alerts\n\t\t\t\t | 2: Alerts and warnings\n\t\t\t\t | 3: Alerts,warnings and errors\n\t\t\t\t | 4: Alerts,warnings,errors and I/O operations\n\t\t\t\t | 5: Full verbosity)\n\t\t\t\t"})
 	pTriage := parser.Flag("t", "triage", &argparse.Options{Required: false, Default: false, Help: "Triage mode (infinite run - scan every new file in the input path directories)"})
 	pRootPath := parser.String("r", "root", &argparse.Options{Required: false, Default: "", Help: "Scan root path (override drive enumeration to scan specific directory)"})
 

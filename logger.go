@@ -17,7 +17,7 @@ const (
 	LOG_VERBOSE = 5 // Full verbosity (all messages)
 )
 
-var loggingVerbosity int = 3
+var loggingVerbosity int = 4
 var loggingPath string = ""
 var loggingFile *os.File
 var unitTesting bool

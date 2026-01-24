@@ -24,7 +24,7 @@ options:
     findInRemovableDrives: true
     findInNetworkDrives: true
     findInCDRomDrives: true
-    scanMemory: true
+    findInMemory: true
 output:
     copyMatchingFiles: false
     base64Files: false

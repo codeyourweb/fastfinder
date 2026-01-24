@@ -185,5 +185,6 @@ func (c *Configuration) getConfiguration(configFile string) *Configuration {
 		}
 	}
 
+	LogMessage(LOG_INFO, "Configuration loaded")
 	return c
 }
