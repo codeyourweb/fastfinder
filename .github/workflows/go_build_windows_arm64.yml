@@ -58,7 +58,8 @@ jobs:
             export CC=aarch64-w64-mingw32-gcc
             export CXX=aarch64-w64-mingw32-g++
             export CGO_CFLAGS="-I/c/llvm-mingw/aarch64-w64-mingw32/include"
-            export CGO_LDFLAGS="-L/c/llvm-mingw/aarch64-w64-mingw32/lib -lyara -lws2_32 -static"
+            export CGO_LDFLAGS="-L/c/llvm-mingw/aarch64-w64-mingw32/lib -lyara -lws2_32 -limagehlp -static"
             
-            go build -v -ldflags "-s -w" -tags yara_static -o fastfinder-arm64.exe .
+            # Using yara_no_pkg_config tag to bypass pkg-config check which fails on cross-compilation environment sometimes
+            go build -v -ldflags "-s -w" -tags yara_static,yara_no_pkg_config -o fastfinder-arm64.exe .
             ls -l fastfinder-arm64.exe

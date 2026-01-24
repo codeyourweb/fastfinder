@@ -55,8 +55,9 @@ jobs:
           export CGO_ENABLED=1
           export GOOS=windows
           export GOARCH=386
-          export CGO_LDFLAGS="-L/mingw32/lib -lyara -lssl -lcrypto -lws2_32 -static"
+          # Force static linking for MinGW-w64
+          export CGO_LDFLAGS="-L/mingw32/lib -lyara -lssl -lcrypto -lws2_32 -limagehlp -static"
           
-          go build -v -ldflags "-s -w" -tags yara_static -o fastfinder-386.exe .
+          go build -v -ldflags "-s -w -extldflags '-static'" -tags yara_static,yara_no_pkg_config -o fastfinder-386.exe .
           ls -l fastfinder-386.exe
           ./fastfinder-386.exe -h
