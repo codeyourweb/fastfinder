@@ -129,6 +129,13 @@ output:
 	if _, err := os.Stat(sfxExe); os.IsNotExist(err) {
 		t.Fatalf("SFX executable was not created at %s", sfxExe)
 	}
+	
+	// Ensure SFX is executable on Linux/Unix
+	if runtime.GOOS != "windows" {
+		if err := os.Chmod(sfxExe, 0755); err != nil {
+			t.Fatalf("Failed to make SFX executable: %v", err)
+		}
+	}
 
 	// Run the SFX executable checking for immediate crash
 	cmdRunSFX := exec.Command(sfxExe, "-r", tempDir)

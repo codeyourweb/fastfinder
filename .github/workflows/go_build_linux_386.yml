@@ -51,4 +51,4 @@ jobs:
            go build -trimpath -tags yara_static -a -ldflags '-s -w -extldflags "-static"' -o fastfinder-386 .
            ls -l fastfinder-386
            sudo chmod +x fastfinder-386
-           sudo ./fastfinder-amd64 -h
+           sudo ./fastfinder-386 -h
