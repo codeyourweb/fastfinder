@@ -117,7 +117,11 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pNoAdvUI bo
 
 	// sfx building option
 	if len(pSfxPath) > 0 {
-		BuildSFX(config, pSfxPath, pLoglevel, pNoAdvUI)
+		if runtime.GOARCH != "amd64" {
+			LogMessage(LOG_ERROR, "(ERROR)", "SFX build is only supported on x64 (amd64) architecture")
+			ExitProgram(1, !UIactive)
+		}
+		BuildSFX(pConfigPath, pSfxPath, pLoglevel, pNoAdvUI)
 		LogMessage(LOG_INFO, "(INFO)", "Fastfinder package generated successfully at", pSfxPath)
 		ExitProgram(0, !UIactive)
 	}
@@ -145,6 +149,11 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pNoAdvUI bo
 		rules = CompileYaraRules(config.Input.Content.Yara, config.AdvancedParameters.YaraRC4Key)
 	}
 
+	// Memory Scan
+	if config.Options.ScanMemory {
+		ScanMemory(config, rules)
+	}
+
 	// drives enumeration
 	var baseDrives []string
 	var excludedPaths []string
@@ -152,6 +161,10 @@ func MainFastfinderRoutine(config Configuration, pConfigPath string, pNoAdvUI bo
 	if len(pRootPath) > 0 {
 		LogMessage(LOG_INFO, "(INIT)", "Using custom scan root:", pRootPath)
 		baseDrives = []string{pRootPath}
+		excludedPaths = []string{}
+	} else if len(config.Input.DirectPaths) > 0 {
+		LogMessage(LOG_INFO, "(INIT)", "Using explicit paths from configuration")
+		baseDrives = config.Input.DirectPaths
 		excludedPaths = []string{}
 	} else {
 		baseDrives, excludedPaths = DriveEnumeration(config)

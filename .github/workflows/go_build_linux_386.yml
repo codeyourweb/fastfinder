@@ -1,0 +1,54 @@
+name: fastfinder_build_linux_386
+
+on: [push, pull_request]
+
+jobs:
+  linux_386_build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            bison \
+            flex \
+            autoconf \
+            pkg-config \
+            automake \
+            libtool \
+            gcc-i686-linux-gnu \
+            libc6-dev-i386-cross
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+            go-version: 1.24
+
+      - name: Install YARA v4.5.5 (i386)
+        run: |
+          YARA_VERSION=4.5.5
+          [ -d "/tmp/yara-${YARA_VERSION}" ] || wget --no-verbose -O- https://github.com/VirusTotal/yara/archive/v${YARA_VERSION}.tar.gz | tar -C /tmp -xzf -
+          cd /tmp/yara-${YARA_VERSION} 
+          make clean || true
+          ./bootstrap.sh
+          ./configure --host=i686-linux-gnu --prefix=/usr/local/i686 --enable-static --disable-shared --disable-crypto 
+          make -j$(nproc)
+          sudo make install
+
+      - uses: actions/checkout@v2
+
+      - name: Building Fastfinder i386
+        run: |
+           export CGO_ENABLED=1
+           export GOOS=linux
+           export GOARCH=386
+           export CC=i686-linux-gnu-gcc
+           export CGO_CFLAGS="-I/usr/local/i686/include"
+           export CGO_LDFLAGS="-L/usr/local/i686/lib -lyara -static"
+           export PKG_CONFIG_PATH="/usr/local/i686/lib/pkgconfig"
+           
+           go build -trimpath -tags yara_static -a -ldflags '-s -w -extldflags "-static"' -o fastfinder-386 .
+           ls -l fastfinder-386
+           sudo chmod +x fastfinder-386
+           sudo ./fastfinder-386 -h

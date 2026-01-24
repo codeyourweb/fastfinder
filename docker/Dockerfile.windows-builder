@@ -15,7 +15,16 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     mingw-w64 \
     mingw-w64-tools \
+    xz-utils \
     && rm -rf /var/lib/apt/lists/*
+
+# Install LLVM-MinGW for ARM64 support
+WORKDIR /tmp
+RUN wget https://github.com/mstorsjo/llvm-mingw/releases/download/20231128/llvm-mingw-20231128-ucrt-ubuntu-20.04-x86_64.tar.xz && \
+    tar -xf llvm-mingw-20231128-ucrt-ubuntu-20.04-x86_64.tar.xz && \
+    mv llvm-mingw-20231128-ucrt-ubuntu-20.04-x86_64 /opt/llvm-mingw && \
+    rm llvm-mingw-20231128-ucrt-ubuntu-20.04-x86_64.tar.xz
+ENV PATH="/opt/llvm-mingw/bin:${PATH}"
 
 # Install Go 1.24
 ARG GO_VERSION=1.24.6
@@ -48,7 +57,41 @@ RUN wget https://github.com/VirusTotal/yara/archive/v${YARA_VERSION}.tar.gz && \
     make install && \
     cd .. && rm -rf yara-${YARA_VERSION} v${YARA_VERSION}.tar.gz
 
+# Build YARA for Windows i386 (MinGW)
+RUN wget https://github.com/VirusTotal/yara/archive/v${YARA_VERSION}.tar.gz && \
+    tar -xzf v${YARA_VERSION}.tar.gz && \
+    cd yara-${YARA_VERSION} && \
+    ./bootstrap.sh && \
+    CC=i686-w64-mingw32-gcc \
+    CFLAGS="-O2 -I/mingw-w64/i686-w64-mingw32/include" \
+    LDFLAGS="-L/mingw-w64/i686-w64-mingw32/lib" \
+    ./configure --host=i686-w64-mingw32 \
+               --prefix=/mingw-w64/i686-w64-mingw32 \
+               --disable-shared \
+               --disable-openssl \
+               --enable-static && \
+    make -j$(nproc) && \
+    make install && \
+    cd .. && rm -rf yara-${YARA_VERSION} v${YARA_VERSION}.tar.gz
+
+# Build YARA for Windows ARM64 using LLVM-MinGW
+RUN wget https://github.com/VirusTotal/yara/archive/v${YARA_VERSION}.tar.gz && \
+    tar -xzf v${YARA_VERSION}.tar.gz && \
+    cd yara-${YARA_VERSION} && \
+    ./bootstrap.sh && \
+    CC=aarch64-w64-mingw32-gcc \
+    CFLAGS="-O2" \
+    ./configure --host=aarch64-w64-mingw32 \
+               --prefix=/opt/llvm-mingw/aarch64-w64-mingw32 \
+               --disable-shared \
+               --disable-openssl \
+               --enable-static && \
+    make -j$(nproc) && \
+    make install && \
+    cd .. && rm -rf yara-${YARA_VERSION} v${YARA_VERSION}.tar.gz
+
 WORKDIR /src
+
 
 # Copy source code
 COPY go.mod go.sum ./
@@ -74,6 +117,29 @@ RUN mkdir -p /output && \
     go build -v -ldflags="-s -w" -tags yara_static -o /output/fastfinder-windows-amd64.exe . && \
     ls -lah /output/
 
+# Build FastFinder for Windows ARM64
+ENV GOARCH=arm64
+ENV CC=aarch64-w64-mingw32-gcc
+ENV CXX=aarch64-w64-mingw32-g++
+ENV CGO_CFLAGS="-I/opt/llvm-mingw/aarch64-w64-mingw32/include"
+ENV CGO_LDFLAGS="-L/opt/llvm-mingw/aarch64-w64-mingw32/lib -lyara -lws2_32 -static"
+ENV PKG_CONFIG_PATH=""
+ENV PKG_CONFIG_LIBDIR=""
+
+RUN go build -v -ldflags="-s -w" -tags "yara_static yara_no_pkg_config" -o /output/fastfinder-windows-arm64.exe . && \
+    ls -lah /output/
+# Build FastFinder for Windows i386
+ENV GOARCH=386
+ENV CC=i686-w64-mingw32-gcc
+ENV CXX=i686-w64-mingw32-g++
+ENV CGO_CFLAGS="-I/mingw-w64/i686-w64-mingw32/include"
+ENV CGO_LDFLAGS="-L/mingw-w64/i686-w64-mingw32/lib -lyara -lws2_32 -static"
+ENV PKG_CONFIG_PATH=""
+ENV PKG_CONFIG_LIBDIR=""
+
+RUN go build -v -ldflags="-s -w" -tags "yara_static yara_no_pkg_config" -o /output/fastfinder-windows-386.exe . && \
+    ls -lah /output/
+
 # ========================================
 # Stage 2: Output collector
 # ========================================
@@ -81,6 +147,8 @@ FROM scratch AS binaries
 
 # Copy compiled Windows binary
 COPY --from=0 /output/fastfinder-windows-amd64.exe /
+COPY --from=0 /output/fastfinder-windows-arm64.exe /
+COPY --from=0 /output/fastfinder-windows-386.exe /
 
 # To extract binary:
 # docker build --target binaries --output type=local,dest=./bin -f docker/Dockerfile.windows-builder .

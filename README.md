@@ -102,11 +102,11 @@ fastfinder [OPTIONS]
 | Option | Description | Default |
 |--------|-------------|----------|
 | `-h, --help` | Print help information | |
-| `-c, --configuration` | Configuration file path | |
-| `-b, --build` | Create standalone binary with embedded config | |
-| `-r, --root` | Scan root path (override drive enumeration) | |
+| `-c, --configuration <yaml config file>` | Configuration file path | |
+| `-b, --build <output executable>` | Create standalone binary with embedded config (x64 architecture only) | |
+| `-r, --root <Path>` | Scan root path (override drive enumeration) | |
 | `-s, --silent` | Silent mode - run without any visible window or console | |
-| `-v, --verbosity` | Log verbosity level (1-5) | `3` |
+| `-v, --verbosity <verbosityLevel>` | Log verbosity level (1-5) | `3` |
 | `-t, --triage` | Continuous monitoring mode | `false` |
 
 ### Verbosity Levels
@@ -126,14 +126,14 @@ fastfinder [OPTIONS]
 # Continuous monitoring mode
 ./fastfinder -c config.yaml -t
 
-# Create standalone executable
+# Create standalone executable (x64 architecture only)
 ./fastfinder -c config.yaml -b standalone_scanner.exe
 ```
 
 > 💡 **Tip**: FastFinder can run with standard user privileges, but administrative rights provide access to all system files.
 
 ### Scan and export file match according to your needs
-configuration examples are available [there](./examples)
+configuration examples are available [there](./examples). Here is a full configuration blank example. You do not need to implement every attribute if you are not using everything.
 
 ```yaml 
 input:
@@ -143,7 +143,7 @@ input:
         yara: [] # use yara rule and specify rules path(s) for more complex pattern search (wildcards / regex / conditions) 
         checksum: [] # parse for md5/sha1/sha256 in file content 
 options:
-    contentMatchDependsOnPathMatch: true # if true, paths are a pre-filter for content searchs. If false, paths and content both generate matchs
+    contentMatchDependsOnPathMatch: true # if true, paths are a pre-filter for grep (string) searches only. YARA and Checksums are always evaluated.
     findInHardDrives: true	# enumerate hard drive content
     findInRemovableDrives: true # enumerate removable drive content 
     findInNetworkDrives: true # enumerate network drive content
@@ -215,7 +215,7 @@ project/
 ### Important notes
 * input path are always case INSENSITIVE
 * content search on string (grep) are always case SENSITIVE
-* backslashes SHOULD NOT be escaped (except with regular expressions)
+* backslashes HAVE TO be escaped (except with regular expressions)
 * **YARA rules must exist** - missing rules will cause FastFinder to exit with an error
 For more informations, take a look at the [examples](./examples)
 

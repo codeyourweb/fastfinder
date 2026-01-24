@@ -28,8 +28,9 @@ type Configuration struct {
 }
 
 type Input struct {
-	Path    []string `yaml:"path"`
-	Content Content  `yaml:"content"`
+	Path        []string `yaml:"path"`
+	DirectPaths []string `yaml:"-"`
+	Content     Content  `yaml:"content"`
 }
 
 type Content struct {
@@ -44,6 +45,7 @@ type Options struct {
 	FindInRemovableDrives          bool `yaml:"findInRemovableDrives"`
 	FindInNetworkDrives            bool `yaml:"findInNetworkDrives"`
 	FindInCDRomDrives              bool `yaml:"findInCDRomDrives"`
+	ScanMemory                     bool `yaml:"scanMemory"`
 }
 
 type Output struct {
@@ -135,12 +137,28 @@ func (c *Configuration) getConfiguration(configFile string) *Configuration {
 
 	// parsing input paths
 	environmentVariables := GetEnvironmentVariables()
+	allPathsAreDirect := true
+	var directPaths []string
 
 	for i := 0; i < len(c.Input.Path); i++ {
 		// replace environment variables
 		for _, env := range environmentVariables {
 			if strings.Contains(strings.ToLower(c.Input.Path[i]), "%"+strings.ToLower(env.Name)+"%") {
 				c.Input.Path[i] = strings.Replace(c.Input.Path[i], "%"+env.Name+"%", env.Value, -1)
+			}
+		}
+
+		// check for direct paths validity
+		if allPathsAreDirect {
+			rawPath := c.Input.Path[i]
+			if strings.Contains(rawPath, "*") || strings.Contains(rawPath, "?") || (strings.HasPrefix(rawPath, "/") && strings.HasSuffix(rawPath, "/")) {
+				allPathsAreDirect = false
+			} else {
+				if _, err := os.Stat(rawPath); err != nil {
+					allPathsAreDirect = false
+				} else {
+					directPaths = append(directPaths, rawPath)
+				}
 			}
 		}
 
@@ -163,6 +181,10 @@ func (c *Configuration) getConfiguration(configFile string) *Configuration {
 			c.Input.Path[i] = strings.Trim(c.Input.Path[i], "/")
 		}
 
+	}
+
+	if allPathsAreDirect && len(directPaths) > 0 {
+		c.Input.DirectPaths = directPaths
 	}
 
 	// normalize checksums

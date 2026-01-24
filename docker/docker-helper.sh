@@ -105,12 +105,11 @@ build_binaries() {
         .
     
     if [ -f "bin/fastfinder-linux-amd64" ] && [ -f "bin/fastfinder-windows-amd64.exe" ]; then
-        print_success "Both binaries built successfully!"
-        print_info "Linux binary: bin/fastfinder-linux-amd64"
-        print_info "Windows binary: bin/fastfinder-windows-amd64.exe"
+        print_success "All binaries built successfully!"
+        print_info "Linux binaries (amd64/arm64/i386) and Windows binaries (amd64/arm64/i386) are in ./bin/"
         
-        # Make Linux binary executable
-        chmod +x bin/fastfinder-linux-amd64
+        # Make Linux binaries executable
+        chmod +x bin/fastfinder-linux-*
         
         # Show file sizes
         ls -lh bin/fastfinder-*
@@ -134,10 +133,10 @@ build_linux() {
         .
     
     if [ -f "bin/fastfinder-linux-amd64" ]; then
-        print_success "Linux binary built successfully!"
-        print_info "Binary: bin/fastfinder-linux-amd64"
-        chmod +x bin/fastfinder-linux-amd64
-        ls -lh bin/fastfinder-linux-amd64
+        print_success "Linux binaries built successfully!"
+        print_info "Binaries are in ./bin/"
+        chmod +x bin/fastfinder-linux-*
+        ls -lh bin/fastfinder-linux-*
     else
         print_error "Build failed!"
         exit 1
@@ -158,9 +157,9 @@ build_windows() {
         .
     
     if [ -f "bin/fastfinder-windows-amd64.exe" ]; then
-        print_success "Windows binary built successfully!"
-        print_info "Binary: bin/fastfinder-windows-amd64.exe"
-        ls -lh bin/fastfinder-windows-amd64.exe
+        print_success "Windows binaries built successfully!"
+        print_info "Binaries are in ./bin/"
+        ls -lh bin/fastfinder-windows-*
     else
         print_error "Build failed!"
         exit 1

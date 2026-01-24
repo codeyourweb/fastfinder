@@ -1,0 +1,65 @@
+name: fastfinder_build_windows_arm64
+
+on: [push, pull_request]
+
+jobs:
+  windows_arm64_build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - name: Install MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          path-type: inherit
+          update: true
+          install: >-
+            base-devel
+            autoconf
+            automake
+            libtool
+            make
+            unzip
+            wget
+            pkg-config
+
+      - name: Install LLVM-MinGW (for ARM64)
+        run: |
+            wget -q https://github.com/mstorsjo/llvm-mingw/releases/download/20231128/llvm-mingw-20231128-ucrt-x86_64.zip -O /tmp/llvm-mingw.zip
+            unzip -q /tmp/llvm-mingw.zip -d /c/
+            mv /c/llvm-mingw-20231128-ucrt-x86_64 /c/llvm-mingw
+            ls /c/llvm-mingw/bin
+
+      - name: Build YARA for ARM64
+        run: |
+            wget -c https://github.com/VirusTotal/yara/archive/refs/tags/v4.5.5.zip -O /tmp/yara.zip
+            cd /tmp && unzip yara.zip
+            cd /tmp/yara-4.5.5
+            ./bootstrap.sh
+            export PATH="/c/llvm-mingw/bin:$PATH"
+            ./configure --host=aarch64-w64-mingw32 --prefix=/c/llvm-mingw/aarch64-w64-mingw32 --disable-shared --disable-openssl --enable-static
+            make -j$(nproc)
+            make install
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+            go-version: 1.24
+      - uses: actions/checkout@v2
+
+      - name: Build FastFinder (ARM64)
+        run: |
+            export PATH="/c/llvm-mingw/bin:$PATH"
+            export CGO_ENABLED=1
+            export GOOS=windows
+            export GOARCH=arm64
+            export CC=aarch64-w64-mingw32-gcc
+            export CXX=aarch64-w64-mingw32-g++
+            export CGO_CFLAGS="-I/c/llvm-mingw/aarch64-w64-mingw32/include"
+            export CGO_LDFLAGS="-L/c/llvm-mingw/aarch64-w64-mingw32/lib -lyara -lws2_32 -limagehlp -static"
+            
+            # Using yara_no_pkg_config tag to bypass pkg-config check which fails on cross-compilation environment sometimes
+            go build -v -ldflags "-s -w" -tags yara_static,yara_no_pkg_config -o fastfinder-arm64.exe .
+            ls -l fastfinder-arm64.exe

@@ -1,9 +1,9 @@
-name: fastfinder_build_linux
+name: fastfinder_build_linux_amd64
 
 on: [push, pull_request]
 
 jobs:
-  linux_standard-build:
+  linux_amd64_build:
     runs-on: ubuntu-latest
     steps:
       - name: Install system dependencies
@@ -16,24 +16,28 @@ jobs:
             autoconf \
             pkg-config \
             automake \
-            libtool \
+            libtool
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
             go-version: 1.24
-      - name: Install YARA v4.5.5
+      - name: Install YARA v4.5.5 (AMD64)
         run: |
           YARA_VERSION=4.5.5
           wget --no-verbose -O- https://github.com/VirusTotal/yara/archive/v${YARA_VERSION}.tar.gz | tar -C /tmp -xzf -
-          ( cd /tmp/yara-${YARA_VERSION} && ./bootstrap.sh && sudo ./configure && sudo make && sudo make install )
+          cd /tmp/yara-${YARA_VERSION} && ./bootstrap.sh && sudo ./configure && sudo make && sudo make install
+          
       - uses: actions/checkout@v2
       - name: Run Unit Tests
         run: |
            sudo ldconfig
+           export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH"
+           # Test AMD64
            go test ./... -v
-      - name: Building Fastfinder
+           
+      - name: Building Fastfinder AMD64
         run: |
-           go build -trimpath -tags yara_static -a -ldflags '-s -w -extldflags "-static"' .
-           ls
-           sudo chmod +x fastfinder
-           sudo ./fastfinder -h
+           go build -trimpath -tags yara_static -a -ldflags '-s -w -extldflags "-static"' -o fastfinder-amd64 .
+           ls -l fastfinder-amd64
+           sudo chmod +x fastfinder-amd64
+           sudo ./fastfinder-amd64 -h

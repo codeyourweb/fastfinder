@@ -15,7 +15,35 @@ import (
 )
 
 // BuildSFX creates a self-extracting rar zip and embed the fastfinder executable / configuration file / yara rules
-func BuildSFX(configuration Configuration, outputSfxExe string, logLevel int, noAdvUI bool) {
+func BuildSFX(configPath string, outputSfxExe string, logLevel int, noAdvUI bool) {
+	var configuration Configuration
+
+	yamlContent, err := os.ReadFile(configPath)
+	if err != nil {
+		LogFatal(fmt.Sprintf("(ERROR) Reading config for SFX: %v", err))
+	}
+	// We handle optional cipher
+	if !bytes.Contains(yamlContent, []byte("input")) {
+		yamlContent = RC4Cipher(yamlContent, ">\u00D5\u00B0\u00AAKb{\u00A1\u00A7\u00CCB$lM\u00D5\u00B19l.t\u00F2\u00D1\u00E9\u00A6\u00D8\u00BF") // Using the constant value manually or via reference if public
+	}
+
+	err = yaml.Unmarshal(yamlContent, &configuration)
+	if err != nil {
+		LogFatal(fmt.Sprintf("(ERROR) Parsing config for SFX: %v", err))
+	}
+
+	// Resolve YARA paths relative to configuration file (Critical to find files during build)
+	configBaseDir := filepath.Dir(configPath)
+	if configBaseDir != "" && configBaseDir != "." {
+		for i := 0; i < len(configuration.Input.Content.Yara); i++ {
+			p := strings.TrimSpace(configuration.Input.Content.Yara[i])
+			if len(p) == 0 || IsValidUrl(p) || filepath.IsAbs(p) {
+				continue
+			}
+			configuration.Input.Content.Yara[i] = filepath.Clean(filepath.Join(configBaseDir, p))
+		}
+	}
+
 	// compress inputDirectory into archive
 	archive := fastfinderResourcesCompress(configuration, logLevel, noAdvUI)
 
@@ -103,7 +131,7 @@ func fastfinderResourcesCompress(configuration Configuration, logLevel int, noAd
 			LogFatal(fmt.Sprintf("(ERROR) %v", err))
 		}
 
-		configuration.Input.Content.Yara[i] = "'./fastfinder_resources/" + fileName + "'"
+		configuration.Input.Content.Yara[i] = fileName
 
 	}
 
