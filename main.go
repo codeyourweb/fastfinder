@@ -23,7 +23,7 @@ import (
 	"github.com/hillu/go-yara/v4"
 )
 
-const FASTFINDER_VERSION = "3.0.0"
+const FASTFINDER_VERSION = "3.6.0"
 const YARA_VERSION = "4.5.5"
 const BUILDER_RC4_KEY = ">Õ°ªKb{¡§ÌB$lMÕ±9l.tòÑé¦Ø¿"
 
