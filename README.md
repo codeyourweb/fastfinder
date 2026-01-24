@@ -7,8 +7,8 @@
 [![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?style=flat-square&logo=go)](https://golang.org)
 [![License](https://img.shields.io/github/license/codeyourweb/fastfinder?style=flat-square)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/codeyourweb/fastfinder?style=flat-square)](https://github.com/codeyourweb/fastfinder/releases)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/codeyourweb/fastfinder/go_build_windows.yml?style=flat-square&label=Windows)](https://github.com/codeyourweb/fastfinder/actions)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/codeyourweb/fastfinder/go_build_linux.yml?style=flat-square&label=Linux)](https://github.com/codeyourweb/fastfinder/actions)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/codeyourweb/fastfinder/go_build_windows_amd64.yml?style=flat-square&label=Windows)](https://github.com/codeyourweb/fastfinder/actions)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/codeyourweb/fastfinder/go_build_linux_amd64.yml?style=flat-square&label=Linux)](https://github.com/codeyourweb/fastfinder/actions)
 [![Platform Support](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-brightgreen?style=flat-square)](#installation)
 
 ## ✨ Overview
