@@ -50,13 +50,22 @@ jobs:
           # Use MinGW 32-bit environment
           export PATH="/mingw32/bin:$PATH"
           export PKG_CONFIG_PATH="/mingw32/lib/pkgconfig"
-          export CGO_CFLAGS="-I/mingw32/include"
+          
+          # Convert paths to mixed mode (Windows style with forward slashes) for CGO
+          _INCLUDE_PATH=$(cygpath -m /mingw32/include)
+          _LIB_PATH=$(cygpath -m /mingw32/lib)
+          
+          export CGO_CFLAGS="-I${_INCLUDE_PATH}"
           
           export CGO_ENABLED=1
           export GOOS=windows
           export GOARCH=386
-          # Force static linking for MinGW-w64
-          export CGO_LDFLAGS="-L/mingw32/lib -lyara -lws2_32 -limagehlp -static"
+          
+          # Check if library exists
+          ls -l /mingw32/lib/libyara.a
+          
+          # Force static linking for MinGW-w64 with full paths
+          export CGO_LDFLAGS="-L${_LIB_PATH} -lyara -lws2_32 -limagehlp -static"
           
           go build -v -ldflags "-s -w -extldflags '-static'" -tags yara_static,yara_no_pkg_config -o fastfinder-386.exe .
           ls -l fastfinder-386.exe
